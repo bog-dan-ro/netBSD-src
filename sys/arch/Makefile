@@ -61,7 +61,7 @@ SUBDIR+= xen
 #	x68k x86_64 xen \
 #	zaurus
 
-.if ${MACHINE_CPU} == aarch64 || ${MACHINE_CPU} == "arm"
+.if ${MACHINE_CPU} == aarch64 || ${MACHINE_CPU} == "arm" || ${MACHINE_CPU} == "i386"
 INCSYMLINKS= ${MACHINE_CPU} /usr/include/machine
 .else
 INCSYMLINKS= ${MACHINE} /usr/include/machine

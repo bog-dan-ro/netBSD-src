@@ -7,6 +7,7 @@ pkg
 port-acorn32
 port-algor
 port-alpha
+port-altos
 port-amd64
 port-amiga
 port-amigappc

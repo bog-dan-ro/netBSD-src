@@ -22,7 +22,7 @@ KLINKFILES+=	${MACHINE_CPU} ${KLINK_MACHINE}
 KLINKFILES+=	sun68k
 .elif ${KLINK_MACHINE} == "sparc64"
 KLINKFILES+=	sparc
-.elif ${KLINK_MACHINE} == "i386"
+.elif ${KLINK_MACHINE} == "i386" || ${KLINK_MACHINE} == "altos"
 KLINKFILES+=	x86 xen
 .elif ${KLINK_MACHINE} == "amd64"
 KLINKFILES+=	x86 i386 xen

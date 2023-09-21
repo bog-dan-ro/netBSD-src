@@ -993,6 +993,7 @@
 ./usr/share/man/cat4
 ./usr/share/man/cat4/acorn32
 ./usr/share/man/cat4/alpha
+./usr/share/man/cat4/altos
 ./usr/share/man/cat4/amiga
 ./usr/share/man/cat4/arc
 ./usr/share/man/cat4/atari
@@ -1030,6 +1031,7 @@
 ./usr/share/man/cat8/acorn32
 ./usr/share/man/cat8/algor
 ./usr/share/man/cat8/alpha
+./usr/share/man/cat8/altos
 ./usr/share/man/cat8/amd64
 ./usr/share/man/cat8/amiga
 ./usr/share/man/cat8/arc
@@ -1080,6 +1082,7 @@
 ./usr/share/man/cat9
 ./usr/share/man/cat9lua
 ./usr/share/man/cat9/alpha
+./usr/share/man/cat9/altos
 ./usr/share/man/cat9/amiga
 ./usr/share/man/cat9/atari
 ./usr/share/man/cat9/emips
@@ -1103,6 +1106,7 @@
 ./usr/share/man/html4
 ./usr/share/man/html4/acorn32
 ./usr/share/man/html4/alpha
+./usr/share/man/html4/altos
 ./usr/share/man/html4/amiga
 ./usr/share/man/html4/arc
 ./usr/share/man/html4/atari
@@ -1140,6 +1144,7 @@
 ./usr/share/man/html8/acorn32
 ./usr/share/man/html8/algor
 ./usr/share/man/html8/alpha
+./usr/share/man/html8/altos
 ./usr/share/man/html8/amd64
 ./usr/share/man/html8/amiga
 ./usr/share/man/html8/arc
@@ -1190,6 +1195,7 @@
 ./usr/share/man/html9
 ./usr/share/man/html9lua
 ./usr/share/man/html9/alpha
+./usr/share/man/html9/altos
 ./usr/share/man/html9/amiga
 ./usr/share/man/html9/atari
 ./usr/share/man/html9/emips
@@ -1213,6 +1219,7 @@
 ./usr/share/man/man4
 ./usr/share/man/man4/acorn32
 ./usr/share/man/man4/alpha
+./usr/share/man/man4/altos
 ./usr/share/man/man4/amiga
 ./usr/share/man/man4/arc
 ./usr/share/man/man4/atari
@@ -1250,6 +1257,7 @@
 ./usr/share/man/man8/acorn32
 ./usr/share/man/man8/algor
 ./usr/share/man/man8/alpha
+./usr/share/man/man8/altos
 ./usr/share/man/man8/amd64
 ./usr/share/man/man8/amiga
 ./usr/share/man/man8/arc
@@ -1300,6 +1308,7 @@
 ./usr/share/man/man9
 ./usr/share/man/man9lua
 ./usr/share/man/man9/alpha
+./usr/share/man/man9/altos
 ./usr/share/man/man9/amiga
 ./usr/share/man/man9/atari
 ./usr/share/man/man9/emips

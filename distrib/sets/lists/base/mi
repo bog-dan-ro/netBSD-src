@@ -4627,6 +4627,7 @@
 ./usr/share/man/cat4/acorn26			base-obsolete		obsolete
 ./usr/share/man/cat4/acorn32			base-man-share
 ./usr/share/man/cat4/alpha			base-man-share
+./usr/share/man/cat4/altos			base-man-share
 ./usr/share/man/cat4/amiga			base-man-share
 ./usr/share/man/cat4/arc			base-man-share
 ./usr/share/man/cat4/arm26			base-obsolete		obsolete
@@ -4671,6 +4672,7 @@
 ./usr/share/man/cat8/acorn32			base-man-share
 ./usr/share/man/cat8/algor			base-man-share
 ./usr/share/man/cat8/alpha			base-man-share
+./usr/share/man/cat8/altos			base-man-share
 ./usr/share/man/cat8/amd64			base-man-share
 ./usr/share/man/cat8/amiga			base-man-share
 ./usr/share/man/cat8/arc			base-man-share
@@ -4730,6 +4732,7 @@
 ./usr/share/man/cat9				base-man-share
 ./usr/share/man/cat9/acorn26			base-obsolete		obsolete
 ./usr/share/man/cat9/alpha			base-man-share
+./usr/share/man/cat9/altos			base-man-share
 ./usr/share/man/cat9/amiga			base-man-share
 ./usr/share/man/cat9/arm26			base-obsolete		obsolete
 ./usr/share/man/cat9/arm32			base-obsolete		obsolete
@@ -4758,6 +4761,7 @@
 ./usr/share/man/html4/acorn26			base-obsolete		obsolete
 ./usr/share/man/html4/acorn32			base-man-share
 ./usr/share/man/html4/alpha			base-man-share
+./usr/share/man/html4/altos			base-man-share
 ./usr/share/man/html4/amiga			base-man-share
 ./usr/share/man/html4/arc			base-man-share
 ./usr/share/man/html4/arm26			base-obsolete		obsolete
@@ -4801,6 +4805,7 @@
 ./usr/share/man/html8/acorn32			base-man-share
 ./usr/share/man/html8/algor			base-man-share
 ./usr/share/man/html8/alpha			base-man-share
+./usr/share/man/html8/altos			base-man-share
 ./usr/share/man/html8/amd64			base-man-share
 ./usr/share/man/html8/amiga			base-man-share
 ./usr/share/man/html8/arc			base-man-share
@@ -4860,6 +4865,7 @@
 ./usr/share/man/html9				base-man-share
 ./usr/share/man/html9/acorn26			base-obsolete		obsolete
 ./usr/share/man/html9/alpha			base-man-share
+./usr/share/man/html9/altos			base-man-share
 ./usr/share/man/html9/amiga			base-man-share
 ./usr/share/man/html9/arm26			base-obsolete		obsolete
 ./usr/share/man/html9/arm32			base-obsolete		obsolete
@@ -4890,6 +4896,7 @@
 ./usr/share/man/man4/acorn26			base-obsolete		obsolete
 ./usr/share/man/man4/acorn32			base-man-share
 ./usr/share/man/man4/alpha			base-man-share
+./usr/share/man/man4/altos			base-man-share
 ./usr/share/man/man4/amiga			base-man-share
 ./usr/share/man/man4/arc			base-man-share
 ./usr/share/man/man4/arm26			base-obsolete		obsolete
@@ -4934,6 +4941,7 @@
 ./usr/share/man/man8/acorn32			base-man-share
 ./usr/share/man/man8/algor			base-man-share
 ./usr/share/man/man8/alpha			base-man-share
+./usr/share/man/man8/altos			base-man-share
 ./usr/share/man/man8/amd64			base-man-share
 ./usr/share/man/man8/amiga			base-man-share
 ./usr/share/man/man8/arc			base-man-share
@@ -4993,6 +5001,7 @@
 ./usr/share/man/man9				base-man-share
 ./usr/share/man/man9/acorn26			base-obsolete		obsolete
 ./usr/share/man/man9/alpha			base-man-share
+./usr/share/man/man9/altos			base-man-share
 ./usr/share/man/man9/amiga			base-man-share
 ./usr/share/man/man9/arm26			base-obsolete		obsolete
 ./usr/share/man/man9/arm32			base-obsolete		obsolete

@@ -11,6 +11,8 @@
 ./algor/include/elf_machdep.h
 ./alpha/include/disklabel.h
 ./alpha/include/elf_machdep.h
+./altos/include/disklabel.h
+./altos/include/elf_machdep.h
 ./amd64/include/disklabel.h
 ./amd64/include/elf_machdep.h
 ./amiga/include/disklabel.h

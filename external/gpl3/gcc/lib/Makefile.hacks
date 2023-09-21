@@ -2,13 +2,13 @@
 
 # some random crap we need in a few places
 
-.if ${MACHINE_CPU} == "mips" || ${MACHINE} == "amd64" || ${MACHINE} == "i386"
+.if ${MACHINE_CPU} == "mips" || ${MACHINE_CPU} == "amd64" || ${MACHINE_CPU} == "i386"
 insn-constants.h:
 	${_MKTARGET_CREATE}
 .if ${MACHINE_CPU} == "mips"
 	echo "enum processor { on, off };" > ${.TARGET}
 .endif
-.if ${MACHINE} == "amd64" || ${MACHINE} == "i386"
+.if ${MACHINE_CPU} == "amd64" || ${MACHINE_CPU} == "i386"
 	echo "#define FIRST_PSEUDO_REG 81" > ${.TARGET}
 .endif
 DPSRCS+=	insn-constants.h

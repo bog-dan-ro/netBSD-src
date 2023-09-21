@@ -667,7 +667,7 @@ MACHINES.alpha=		alpha
 MACHINES.arm=		acorn32 cats epoc32 evbarm hpcarm \
 			iyonix netwinder shark zaurus
 MACHINES.coldfire=	evbcf
-MACHINES.i386=		i386
+MACHINES.i386=		i386 altos
 MACHINES.ia64=		ia64
 MACHINES.hppa=		hppa
 MACHINES.m68000=	sun2

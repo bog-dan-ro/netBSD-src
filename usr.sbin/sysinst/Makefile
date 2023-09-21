@@ -14,6 +14,7 @@ SUBDIR+=arch/dummy
 
 SUBDIR += arch/acorn32
 SUBDIR += arch/alpha
+SUBDIR += arch/altos
 SUBDIR += arch/amd64
 SUBDIR += arch/amiga
 SUBDIR += arch/arc

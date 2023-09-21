@@ -12,6 +12,7 @@ SUBDIR=	${RELEASEMACHINE}
 .else
 SUBDIR+= acorn32
 SUBDIR+= alpha
+SUBDIR+= altos
 SUBDIR+= amd64
 SUBDIR+= amiga
 SUBDIR+= arc

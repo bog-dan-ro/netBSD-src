@@ -146,6 +146,7 @@ EASTER_EGG?=	/dev/null
 
 MACHINE_ARCH.acorn32=	arm
 MACHINE_ARCH.algor=	mipsel
+MACHINE_ARCH.altos=	i386
 MACHINE_ARCH.amiga=	m68k
 MACHINE_ARCH.amigappc=	powerpc
 MACHINE_ARCH.arc=	mipsel
