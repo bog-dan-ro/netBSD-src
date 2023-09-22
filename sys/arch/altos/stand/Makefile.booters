@@ -22,7 +22,7 @@ CPUFLAGS=  -march=i386 -mtune=i386
 .endif
 COPTS=	${OPT_SIZE.${ACTIVE_CC}}
 
-I386_STAND_DIR?= $S/arch/i386/stand
+I386_STAND_DIR?= $S/arch/altos/stand
 
 .PATH: ${I386_STAND_DIR}/lib
 
@@ -31,11 +31,11 @@ GENPROMDIR= ${I386_STAND_DIR}/genprom
 GENPROMOBJDIR!= cd ${GENPROMDIR} && ${PRINTOBJDIR}
 GENPROM= ${GENPROMOBJDIR}/genprom
 
-.PATH: ${I386_STAND_DIR}/lib/crt/dos
-DOSSTART= start_dos.o doscommain.o
+#.PATH: ${I386_STAND_DIR}/lib/crt/dos
+#DOSSTART= start_dos.o doscommain.o
 
-.PATH: ${I386_STAND_DIR}/lib/crt/pxe
-PXESTART= start_pxe.o
+#.PATH: ${I386_STAND_DIR}/lib/crt/pxe
+#PXESTART= start_pxe.o
 
 CPPFLAGS+= -nostdinc -I${.OBJDIR} -I$S -I${I386_STAND_DIR}/lib -I$S/lib/libsa
 CPPFLAGS+= -D_STANDALONE
@@ -117,5 +117,5 @@ ${BASE}.bin: ${STARTFILE} ${OBJS} ${LIBSA} ${LIBZ} ${LIBKERN} ${LIBI386}
 CWARNFLAGS.gcc+=	${GCC_NO_ADDR_OF_PACKED_MEMBER}
 
 .include <bsd.prog.mk>
-KLINK_MACHINE=	i386
+KLINK_MACHINE=	altos
 .include <bsd.klinks.mk>

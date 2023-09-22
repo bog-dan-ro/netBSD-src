@@ -45,65 +45,110 @@
  */
 
 	.text
-	.code16
 ENTRY(boot_start)
-	jmp	boot_start_1
-	.balign	4
+	cld
+	jmp boot_start_1
 ENTRY(boot_magic)
-	.long	X86_BOOT_MAGIC_2	/* checked for by bootxx code */
-ENTRY(boot_params)
-	.long	boot_start_1 - boot_params
+	// altos magic number
+	.byte 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02
+.balign	4
 #include <boot_params.S>
-	. = boot_start + 0x80		/* space for patchable variables */
+.balign	4
+
+#define PHY_ADDR 0x300000
 boot_start_1:
+	// test the shit
+	movl %cs, %eax
+	cmp $0x168, %eax
+	jz boot_start_2
+	mov $0xf000, %esp
+	movw %cs, %ax
+	subw $8, %ax
+	mov %ax, %ss
+	mov %ax, %ds
+	mov %ax, %es
 
-#if 0
-	/* Allow for boot_start not being %cs:0 */
-	call	2f
-2:	pop	%cx
-	sub	$2b, %cx		/* %ax is offset */
-	test	$0xf, %cx		/* check code seg aligned */
-	jz	3f
-	lret				/* not playing if not */
-3:	mov	%cs, %ax
-	shr	$4, %cx
-	add	%cx, %ax		/* segment staring at boot_start */
-	push	%ax
-	push	$4f
-	lret
-4:
-#endif
+	// init bootloader segment
+	movl $8, %ecx
+	movl %ecx, %fs
 
-	mov	%cs, %ax
-	mov	%ax, %es
+	// setup data (SS, DS, ES, FS, GS) selector
+	movl $0x160, %ecx
+	movl $PHY_ADDR, %eax
+	movw %ax, %fs:0x2(%ecx)
+	shrl $0x10, %eax
+	movb %al, %fs:0x4(%ecx)
+	movb %ah, %fs:0x7(%ecx)
+	movl $MEMSIZE-1, %eax
+	movw %ax, %fs:(%ecx)
+	shrl $0x10, %eax
+	orb $0x40, %al
+	movb %al, %fs:0x6(%ecx)
+	movb $0x92, %fs:0x5(%ecx)
 
-	movl	%ecx, %ebp		/* move LBA out of the way */
+	// setup CS selector
+	movl $0x168, %ecx
+	movl $PHY_ADDR, %eax
+	movw %ax, %fs:0x2(%ecx)
+	shrl $0x10, %eax
+	movb %al, %fs:0x4(%ecx)
+	movb %ah, %fs:0x7(%ecx)
+	movl $__bss_start, %eax
+	movw %ax, %fs:(%ecx)
+	shrl $0x10, %eax
+	orb $0x40, %al
+	movb %al, %fs:0x6(%ecx)
+	movb $0x9a, %fs:0x5(%ecx)
 
-	/* Grab boot_params patched into bootxx by installboot */
-	cmpl	$X86_BOOT_MAGIC_1,-4(%si)	/* sanity check ptr */
-	jne	2f
-	mov	$boot_params, %di
-	movl	(%si),%ecx
-	cmp	$boot_start_1 - boot_params, %cx
-	jbe	1f
-	mov	$boot_start_1 - boot_params, %cx
-1:	cld
-	rep
-	movsb
-2:
+	movl $0x1000, %ecx
+	movw %cs, %ax
+	subl $8, %eax
+	movw %ax, %ds
 
-	mov	%ax, %ds
-	movl	$_end, %eax		/* top of bss */
-	shr	$4, %eax		/* as a segment */
-	add	$0x1001, %ax		/* and + 64k */
-	mov	%ax, %ss		/* for stack */
-	mov	$0xfffc, %sp		/* %sp at top of it */
+	// get current disk
+	movb $0x0d, %bl
+	int	$0x28
+	xor %ah, %ah
+	cmp $2, %ax
+	jne not_hdd // TODO Handle Floppy & Tape boot ?
+	movw %ax, DRIVE
+	movl $PHY_ADDR, ADDR
 
-	call	gdt_fixup
+	xchg %dl, %dh
+	movw %dx, ID_BIG_ENDIAN
+	movw $0x0000, BLK_ADDR_BIG_ENDIAN
+	movb $0x08, BLK_ADDR_BIG_ENDIAN + 2
+	movb $0x08, BLK_COUNT
 
-	calll	real_to_prot
-	.code32
+	movl $__bss_start, %eax
+	movl $0x1000, %ecx
+	xor %edx, %edx
+	div %ecx
+	inc %eax
+	mov %eax, %ecx
+read_more:
+	call bios_do_disk_io
+	cmpw $0x0000, STATUS
+	jne read_error
+	addl $0x1000, ADDR
+	addb $0x08, BLK_ADDR_BIG_ENDIAN + 2
+	loop read_more
 
+	ljmp $0x168, $0
+
+boot_start_2:
+	movl $0x160, %eax
+	mov %ax, %ds
+	mov %ax, %ss
+	mov %ax, %es
+	mov %ax, %gs
+	mov %ax, %fs
+	mov $MEMSIZE, %esp
+	pushl $greetings_msg
+	call puts
+	addl $4, %esp
+
+	// at this point we're complete in memory 
 	movl	$_end, %ecx		/* zero bss */
 	movl	$__bss_start, %edi
 	subl	%edi, %ecx
@@ -112,38 +157,102 @@ boot_start_1:
 	rep
 	stosl
 
-	testb	$X86_BP_FLAGS_LBA64VALID, boot_params+4
-	jnz	1f
-	xorl	%ebp, %ebp		/* high part of LBA is not valid */
-1:
-
-	movzbl	%dl, %edx
-	push	%ebp			/* high 32 bits of first sector */
-	push	%ebx			/* first sector of bios partition */
-	push	%edx			/* bios disk */
 	call	_C_LABEL(boot2)		/* C bootstrap code */
-	addl	$12, %esp
-	call	prot_to_real
-	.code16
+	jmp	_rtt
 
-boot_fail:
-	push	%ax
-	movw	$1f, %si
-	call	message
-	pop	%si
-	call	message
-	jmp	loopstop
-1:	.asciz	"Boot2 failed: "
+// c: void puts(const char *str)
+ENTRY(puts)
+	movl 4(%esp), %eax
+puts_no_stack:
+	push %ebx
+	mov $0x103, %bx
+	int $0x28
+	pop %ebx
+	ret
 
-ENTRY(_rtt)
+// c: void bios_do_disk_io()
+ENTRY(bios_do_disk_io)
+	movl $g_disk_io, %eax
+	pushal
+	movl $0x1e, %ebx
+	int $0x28
+	popal
+	ret
+
 	.code32
-	call	prot_to_real
-	.code16
-loopstop:
-	movb	$0x86, %ah		/* delay for about a second */
-	movw	$16, %cx
-	int	$0x15
-	int	$0x18			/* might be a boot fail entry */
-1:	sti
+ENTRY(_rtt)
+_rtt:
+	sti
 	hlt
-	jmp	1b
+	jmp _rtt
+
+ENTRY(boot_data_addr)
+	.long	PHY_ADDR
+
+ENTRY(kernel_data_addr)
+	.long	0x00000000
+
+not_hdd:
+	pushl $not_hdd_msg
+	call puts
+	addl $4, %esp
+	jmp	_rtt
+
+read_error:
+	pushl $error_msg
+	call puts
+	addl $4, %esp
+	jmp	_rtt
+
+greetings_msg:
+	.asciz "\n\r\033[32mLoading netBSD bootloader...\033[0m\n\r"
+
+not_hdd_msg:
+	.asciz	"\n\r\033[31mNot booting from HDD\033[0m\n\r"
+
+error_msg:
+	.asciz	"\n\r\033[31mCan't read the rest of the boot\033[0m\n\r"
+
+	.text
+	.align  16
+gdt:
+	.word	0, 0
+	.byte	0, 0x00, 0x00, 0
+
+	/* kernel code segment */
+	.globl flatcodeseg
+flatcodeseg = . - gdt
+	.word	0xffff, 0
+	.byte	0, 0x9f, 0xcf, 0
+
+	/* kernel data segment */
+	.globl flatdataseg
+flatdataseg = . - gdt
+	.word	0xffff, 0
+	.byte	0, 0x93, 0xcf, 0
+
+	/* boot code segment, base will be patched */
+bootcodeseg = . - gdt
+	.word	0xffff, 0
+	.byte	0, 0x9e, 0x4f, 0
+
+	/* boot data segment, base will be patched */
+bootdataseg = . - gdt
+	.word	0xffff, 0
+	.byte	0, 0x92, 0xcf, 0
+
+	/* 16 bit real mode, base will be patched */
+bootrealseg = . - gdt
+	.word	0xffff, 0
+	.byte	0, 0x9e, 0x00, 0
+
+	/* limits (etc) for data segment in real mode */
+bootrealdata = . - gdt
+	.word	0xffff, 0
+	.byte	0, 0x92, 0x00, 0
+gdtlen = . - gdt
+
+	.align	16
+gdtarg:
+	.word	gdtlen-1		/* limit */
+	.long	0			/* physical addr, will be inserted */

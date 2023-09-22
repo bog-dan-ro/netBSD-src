@@ -40,41 +40,19 @@
  * Get mem below 1M, in kByte.
  */
 ENTRY(getbasemem)
-	pusha
-
-	call	_C_LABEL(prot_to_real)
-	.code16
-
-	int	$0x12
-	/* Zero-extend 16-bit result to 32 bits */
-	movzwl	%ax,%eax
-
-	calll	_C_LABEL(real_to_prot)
-	.code32
-
-	movl	%eax,28(%esp)
-	popa
+	movl	$0x400, %eax
 	ret
 
 /*
  * Get mem above 1M, in kByte.
  */
 ENTRY(getextmem1)
-	pusha
-
-	call	_C_LABEL(prot_to_real)
-	.code16
-
-	movb	$0x88,%ah
-	int	$0x15
-
-	/* Zero-extend 16-bit result to 32 bits */
-	movzwl	%ax,%eax
-
-	calll	_C_LABEL(real_to_prot)
-	.code32
-
-	movl	%eax,28(%esp)
-	popa
+	// FIXME !!!
+	push %ds
+	movw $0x20, %ax
+	movw %ax, %ds
+	mov 0x02db, %eax
+	pop %ds
+	dec %eax
+	shl $12, %eax
 	ret
-

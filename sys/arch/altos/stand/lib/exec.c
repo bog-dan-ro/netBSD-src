@@ -102,14 +102,6 @@
 #include "libi386.h"
 #include "bootinfo.h"
 #include "bootmod.h"
-#include "vbe.h"
-#ifdef SUPPORT_PS2
-#include "biosmca.h"
-#endif
-#ifdef EFIBOOT
-#include "efiboot.h"
-#undef DEBUG	/* XXX */
-#endif
 
 #define BOOT_NARGS	6
 
@@ -374,43 +366,10 @@ common_load_kernel(const char *file, u_long *basemem, u_long *extmem,
     physaddr_t loadaddr, int floppy, u_long marks[MARK_MAX])
 {
 	int fd;
-#ifdef XMS
-	u_long xmsmem;
-	physaddr_t origaddr = loadaddr;
-#endif
 
 	*extmem = getextmem();
 	*basemem = getbasemem();
 
-#ifdef XMS
-	if ((getextmem1() == 0) && (xmsmem = checkxms())) {
-		u_long kernsize;
-
-		/*
-		 * With "CONSERVATIVE_MEMDETECT", extmem is 0 because
-		 * getextmem() is getextmem1(). Without, the "smart"
-		 * methods could fail to report all memory as well.
-		 * xmsmem is a few kB less than the actual size, but
-		 * better than nothing.
-		 */
-		if (xmsmem > *extmem)
-			*extmem = xmsmem;
-		/*
-		 * Get the size of the kernel
-		 */
-		marks[MARK_START] = loadaddr;
-		if ((fd = loadfile(file, marks, COUNT_KERNEL)) == -1)
-			return errno;
-		close(fd);
-
-		kernsize = marks[MARK_END];
-		kernsize = (kernsize + 1023) / 1024;
-
-		loadaddr = xmsalloc(kernsize);
-		if (!loadaddr)
-			return ENOMEM;
-	}
-#endif
 	marks[MARK_START] = loadaddr;
 	if ((fd = loadfile(file, marks,
 	    LOAD_KERNEL & ~(floppy ? LOAD_BACKWARDS : 0))) == -1)
@@ -422,32 +381,6 @@ common_load_kernel(const char *file, u_long *basemem, u_long *extmem,
 	if (fsmod != NULL)
 		module_add_split(fsmod, BM_TYPE_KMOD);
 
-	/*
-	 * Gather some information for the kernel. Do this after the
-	 * "point of no return" to avoid memory leaks.
-	 * (but before DOS might be trashed in the XMS case)
-	 */
-#ifdef PASS_BIOSGEOM
-	bi_getbiosgeom();
-#endif
-#ifdef PASS_MEMMAP
-	bi_getmemmap();
-#endif
-
-#ifdef XMS
-	if (loadaddr != origaddr) {
-		/*
-		 * We now have done our last DOS IO, so we may
-		 * trash the OS. Copy the data from the temporary
-		 * buffer to its real address.
-		 */
-		marks[MARK_START] -= loadaddr;
-		marks[MARK_END] -= loadaddr;
-		marks[MARK_SYM] -= loadaddr;
-		marks[MARK_END] -= loadaddr;
-		ppbcopy(loadaddr, origaddr, marks[MARK_END]);
-	}
-#endif
 	marks[MARK_END] = (((u_long) marks[MARK_END] + sizeof(int) - 1)) &
 	    (-sizeof(int));
 	image_end = marks[MARK_END];
@@ -467,9 +400,6 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 	u_long basemem;
 	u_long entry;
 	int error;
-#ifdef EFIBOOT
-	int i;
-#endif
 
 #ifdef	DEBUG
 	printf("exec: file=%s loadaddr=0x%lx\n", file ? file : "NULL",
@@ -497,21 +427,10 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 		errno = error;
 		goto out;
 	}
-#ifdef EFIBOOT
-	efi_load_start = marks[MARK_START];
-
-	/* adjust to the real load address */
-	marks[MARK_START] -= efi_loadaddr;
-	marks[MARK_ENTRY] -= efi_loadaddr;
-	marks[MARK_DATA] -= efi_loadaddr;
-	/* MARK_NSYM */
-	marks[MARK_SYM] -= efi_loadaddr;
-	marks[MARK_END] -= efi_loadaddr;
-#endif
 
 	boot_argv[0] = boothowto;
 	boot_argv[1] = 0;
-	boot_argv[2] = vtophys(bootinfo);	/* old cyl offset */
+	boot_argv[2] = (uint32_t)(boot_data_addr + bootinfo);	/* old cyl offset */
 	boot_argv[3] = marks[MARK_END];
 	boot_argv[4] = extmem;
 	boot_argv[5] = basemem;
@@ -520,14 +439,6 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 	if (boot_modules_enabled) {
 		module_init(file);
 		if (btinfo_modulelist) {
-#ifdef EFIBOOT
-			/* convert module loaded address to paddr */
-			struct bi_modulelist_entry *bim;
-			bim = (void *)(btinfo_modulelist + 1);
-			for (i = 0; i < btinfo_modulelist->num; i++, bim++)
-				bim->base -= efi_loadaddr;
-			btinfo_modulelist->endpa -= efi_loadaddr;
-#endif
 			BI_ADD(btinfo_modulelist, BTINFO_MODULELIST,
 			    btinfo_modulelist_size);
 		}
@@ -549,7 +460,6 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 	BI_ADD(&btinfo_symtab, BTINFO_SYMTAB, sizeof(struct btinfo_symtab));
 
 	/* set new video mode if necessary */
-	vbe_commit();
 	BI_ADD(&btinfo_framebuffer, BTINFO_FRAMEBUFFER,
 	    sizeof(struct btinfo_framebuffer));
 
@@ -557,32 +467,6 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 		(*callback)();
 
 	entry = marks[MARK_ENTRY];
-#ifdef EFIBOOT
-	/* Copy bootinfo to safe arena. */
-	for (i = 0; i < bootinfo->nentries; i++) {
-		struct btinfo_common *bi = (void *)(u_long)bootinfo->entry[i];
-		char *p = alloc(bi->len);
-		memcpy(p, bi, bi->len);
-		bootinfo->entry[i] = vtophys(p);
-	}
-
-	efi_kernel_start = marks[MARK_START];
-	efi_kernel_size = image_end - (efi_loadaddr + efi_kernel_start);
-
-	switch (efi_reloc_type) {
-	case RELOC_NONE:
-		entry += (efi_load_start - efi_kernel_start);
-		efi_kernel_start = efi_load_start;
-		break;
-	case RELOC_ADDR:
-		entry += (efi_kernel_reloc - efi_kernel_start);
-		efi_kernel_start = efi_kernel_reloc;
-		break;
-	case RELOC_DEFAULT:
-	default:
-		break;
-	}
-#endif
 	startprog(entry, BOOT_NARGS, boot_argv,
 	    x86_trunc_page(basemem * 1024));
 	panic("exec returned");
@@ -855,63 +739,6 @@ userconf_init(void)
 		off += sizeof(*bi);
 		btinfo_userconfcommands->num++;
 	}
-}
-
-int
-exec_multiboot(const char *file, char *args)
-{
-	physaddr_t loadaddr = 0;
-	u_long marks[MARK_MAX];
-	u_long extmem;
-	u_long basemem;
-	struct multiboot_package *mbp = NULL;
-
-#ifndef NO_MULTIBOOT2
-	if ((mbp = probe_multiboot2(file)) != NULL)
-		goto is_multiboot;
-#endif
-
-	if ((mbp = probe_multiboot1(file)) != NULL) {
-#ifdef EFIBOOT
-		printf("EFI boot requires multiboot 2 kernel\n");
-		goto out;
-#else
-		goto is_multiboot;
-#endif
-	}
-
-#ifndef NO_MULTIBOOT2
-	printf("%s is not a multiboot kernel\n", file);
-#else
-	printf("%s is not a multiboot 1 kernel "
-	    "(multiboot 2 support is not built in)\n", file);
-#endif
-	goto out;
-
-is_multiboot:
-#ifdef EFIBOOT
-	loadaddr = efi_loadaddr;
-#endif
-	if (common_load_kernel(file, &basemem, &extmem, loadaddr, 0, marks))
-		goto out;
-
-	if (boot_modules_enabled)
-		module_init(file);
-
-	mbp->mbp_args = args;
-	mbp->mbp_basemem = basemem;
-	mbp->mbp_extmem = extmem;
-	mbp->mbp_loadaddr = loadaddr;
-	mbp->mbp_marks = marks;
-
-	/* Only returns on error */
-	(void)mbp->mbp_exec(mbp);
-
-out:
-	if (mbp != NULL)
-		mbp->mbp_cleanup(mbp);
-
-	return -1;
 }
 
 void

@@ -80,24 +80,19 @@
 #include <bootmod.h>
 #include <bootmenu.h>
 #include <biosdisk.h>
-#include <vbe.h>
 #include "devopen.h"
 
 #ifdef _STANDALONE
 #include <bootinfo.h>
 #endif
-#ifdef SUPPORT_PS2
-#include <biosmca.h>
-#endif
 
-extern struct x86_boot_params boot_params;
+// extern struct x86_boot_params boot_params;
 
 extern	const char bootprog_name[], bootprog_rev[], bootprog_kernrev[];
 
 int errno;
 
 int boot_biosdev;
-daddr_t boot_biossector;
 
 static const char * const names[][2] = {
 	{ "netbsd", "netbsd.gz" },
@@ -121,7 +116,7 @@ static const char *default_part_name;
 
 char *sprint_bootsel(const char *);
 static void bootit(const char *, int);
-void boot2(int, uint64_t);
+void boot2(void);
 
 void	command_help(char *);
 #if LIBSA_ENABLE_LS_OP
@@ -131,13 +126,13 @@ void	command_quit(char *);
 void	command_boot(char *);
 void	command_pkboot(char *);
 void	command_dev(char *);
-void	command_consdev(char *);
 void	command_root(char *);
+void	command_fill1(char *);
+void	command_fill2(char *);
 #ifndef SMALL
 void	command_menu(char *);
 #endif
 void	command_modules(char *);
-void	command_multiboot(char *);
 
 const struct bootblk_command commands[] = {
 	{ "help",	command_help },
@@ -149,17 +144,14 @@ const struct bootblk_command commands[] = {
 	{ "boot",	command_boot },
 	{ "pkboot",	command_pkboot },
 	{ "dev",	command_dev },
-	{ "consdev",	command_consdev },
+	{ "fill1",	command_fill1 },
+	{ "fill2",	command_fill2 },
 	{ "root",	command_root },
 #ifndef SMALL
 	{ "menu",	command_menu },
 #endif
 	{ "modules",	command_modules },
 	{ "load",	module_add },
-	{ "multiboot",	command_multiboot },
-	{ "vesa",	command_vesa },
-	{ "splash",	splash_add },
-	{ "rndseed",	rnd_add },
 	{ "fs",		fs_add },
 	{ "userconf",	userconf_add },
 	{ NULL,		NULL },
@@ -304,57 +296,50 @@ bootit(const char *filename, int howto)
  * biossector: Sector number of the NetBSD partition
  */
 void
-boot2(int biosdev, uint64_t biossector)
+boot2(void)
 {
+	extern char __bss_start[];
+	extern uint32_t g_crc32;
+	uint32_t crc = crc32(0, (void*)&g_crc32 + 4, (uint32_t)(__bss_start - (char*)&g_crc32 - 4));
+	if (crc != g_crc32) {
+		printf("\n\033[31mCRC32[%x:%x] mismatch: %x != %x, press any key to continue\033[0m\n", (uint32_t)&g_crc32 + 4, (uint32_t)(__bss_start - (char*)&g_crc32 - 4), crc, g_crc32);
+		getchar();
+	} else {
+		printf("\n\033[32mCRC32[%x:%x] match: %x == %x\033[0m\n", (uint32_t)&g_crc32 + 4, (uint32_t)(__bss_start - (char*)&g_crc32 - 4), crc, g_crc32);
+	}
+
+	extern char end[];
+	setheap((void *)ALIGN(end), (void *)MEMSIZE - ALIGN(end) - 0x10000); // keep 0x10000 for stack
 	extern char twiddle_toggle;
 	int currname;
 	char c;
 
 	twiddle_toggle = 1;	/* no twiddling until we're ready */
 
-	initio(boot_params.bp_consdev);
+	boot_modules_enabled = false/*!(boot_params.bp_flags
+				 & X86_BP_FLAGS_NOMODULES)*/;
 
-#ifdef SUPPORT_PS2
-	biosmca();
-#endif
-	gateA20();
-
-	boot_modules_enabled = !(boot_params.bp_flags
-				 & X86_BP_FLAGS_NOMODULES);
-	if (boot_params.bp_flags & X86_BP_FLAGS_RESET_VIDEO)
-		biosvideomode();
-
-	vbe_init();
 
 	/* need to remember these */
-	boot_biosdev = biosdev;
-	boot_biossector = biossector;
+	boot_biosdev = get_hdd_id();
 
 	/* try to set default device to what BIOS tells us */
-	bios2dev(biosdev, biossector, &default_devname, &default_unit,
+	bios2dev(boot_biosdev, &default_devname, &default_unit,
 		 &default_partition, &default_part_name);
 
 	/* if the user types "boot" without filename */
 	default_filename = DEFFILENAME;
 
 #ifndef SMALL
-	if (!(boot_params.bp_flags & X86_BP_FLAGS_NOBOOTCONF)) {
+	// if (!(boot_params.bp_flags & X86_BP_FLAGS_NOBOOTCONF)) {
 		parsebootconf(BOOTCFG_FILENAME);
-	} else {
-		bootcfg_info.timeout = boot_params.bp_timeout;
-	}
-	
+	// } else {
+	// 	bootcfg_info.timeout = boot_params.bp_timeout;
+	// }
 
-	/*
-	 * If console set in boot.cfg, switch to it.
-	 * This will print the banner, so we don't need to explicitly do it
-	 */
-	if (bootcfg_info.consdev) {
-		command_consdev(bootcfg_info.consdev);
-	} else {
-		clearit();
-		print_bootcfg_banner(bootprog_name, bootprog_rev);
-	}
+
+	clearit();
+	print_bootcfg_banner(bootprog_name, bootprog_rev);
 
 	/* Display the menu, if applicable */
 	twiddle_toggle = 0;
@@ -375,28 +360,29 @@ boot2(int biosdev, uint64_t biossector)
 		       sprint_bootsel(names[currname][0]));
 
 #ifdef SMALL
+#error "SMALL not supported"
 		c = awaitkey(boot_params.bp_timeout, 1);
 #else
 		c = awaitkey((bootcfg_info.timeout < 0) ? 0
 		    : bootcfg_info.timeout, 1);
 #endif
 		if ((c != '\r') && (c != '\n') && (c != '\0')) {
-		    if ((boot_params.bp_flags & X86_BP_FLAGS_PASSWORD) == 0) {
+		    // if ((boot_params.bp_flags & X86_BP_FLAGS_PASSWORD) == 0) {
 			/* do NOT ask for password */
 			bootmenu(); /* does not return */
-		    } else {
-			/* DO ask for password */
-			if (check_password((char *)boot_params.bp_password)) {
-			    /* password ok */
-			    printf("type \"?\" or \"help\" for help.\n");
-			    bootmenu(); /* does not return */
-			} else {
-			    /* bad password */
-			    printf("Wrong password.\n");
-			    currname = 0;
-			    continue;
-			}
-		    }
+		    // } else {
+			// /* DO ask for password */
+			// if (check_password((char *)boot_params.bp_password)) {
+			//     /* password ok */
+			//     printf("type \"?\" or \"help\" for help.\n");
+			//     bootmenu(); /* does not return */
+			// } else {
+			//     /* bad password */
+			//     printf("Wrong password.\n");
+			//     currname = 0;
+			//     continue;
+			// }
+		    // }
 		}
 
 		/*
@@ -431,21 +417,18 @@ command_help(char *arg)
 #if LIBSA_ENABLE_LS_OP
 	       "ls [dev:][path]\n"
 #endif
+		   "fill1 {value}\n"
+		   "fill2 {value}\n"
 	       "dev [dev:]\n"
-	       "consdev {pc|{com[0123]|com[0123]kbd|auto}[,{speed}]}\n"
 	       "root    {spec}\n"
 	       "     spec can be disk, e.g. wd0, sd0\n"
 	       "     or string like wedge:name\n"
-	       "vesa {modenum|on|off|enabled|disabled|list}\n"
 #ifndef SMALL
 	       "menu (reenters boot menu, if defined in boot.cfg)\n"
 #endif
 	       "modules {on|off|enabled|disabled}\n"
 	       "load {path_to_module}\n"
-	       "multiboot [dev:][filename] [<args>]\n"
-	       "splash {path_to_image_file}\n"
 	       "userconf {command}\n"
-	       "rndseed {path_to_rndseed_file}\n"
 	       "help|?\n"
 	       "quit\n");
 }
@@ -468,7 +451,7 @@ command_quit(char *arg)
 {
 
 	printf("Exiting...\n");
-	delay(1000000);
+	wait_sec(1);
 	reboot();
 	/* Note: we shouldn't get to this point! */
 	panic("Could not reboot!");
@@ -542,57 +525,6 @@ command_dev(char *arg)
 		default_part_name = default_devname + 5;
 }
 
-static const struct cons_devs {
-	const char	*name;
-	u_int		tag;
-} cons_devs[] = {
-	{ "pc",		CONSDEV_PC },
-	{ "com0",	CONSDEV_COM0 },
-	{ "com1",	CONSDEV_COM1 },
-	{ "com2",	CONSDEV_COM2 },
-	{ "com3",	CONSDEV_COM3 },
-	{ "com0kbd",	CONSDEV_COM0KBD },
-	{ "com1kbd",	CONSDEV_COM1KBD },
-	{ "com2kbd",	CONSDEV_COM2KBD },
-	{ "com3kbd",	CONSDEV_COM3KBD },
-	{ "auto",	CONSDEV_AUTO },
-	{ NULL,		0 }
-};
-
-void
-command_consdev(char *arg)
-{
-	const struct cons_devs *cdp;
-	char *sep;
-	int speed;
-
-	sep = strchr(arg, ',');
-	if (sep != NULL)
-		*sep++ = '\0';
-
-	for (cdp = cons_devs; cdp->name; cdp++) {
-		if (strcmp(arg, cdp->name) != 0)
-			continue;
-
-		if (sep != NULL) {
-			if (cdp->tag == CONSDEV_PC)
-				goto error;
-
-			speed = atoi(sep);
-			if (speed < 0)
-				goto error;
-			boot_params.bp_conspeed = speed;
-		}
-
-		initio(cdp->tag);
-		clearit();
-		print_bootcfg_banner(bootprog_name, bootprog_rev);
-		return;
-	}
-error:
-	printf("invalid console device.\n");
-}
-
 void
 command_root(char *arg)
 {
@@ -603,6 +535,18 @@ command_root(char *arg)
 		biv->devname[sizeof(biv->devname)-1] = '\0';
 		printf("truncated to %s\n",biv->devname);
 	}
+}
+
+void command_fill1(char *arg)
+{
+	g_disk_io.hdd.fill[0] = atoi(arg);
+	printf("Set fill[0] = 0x%x\n", g_disk_io.hdd.fill[0]);
+}
+
+void command_fill2(char *arg)
+{
+	g_disk_io.hdd.fill[1] = atoi(arg);
+	printf("Set fill[1] = 0x%x\n", g_disk_io.hdd.fill[1]);
 }
 
 #ifndef SMALL
@@ -633,17 +577,3 @@ command_modules(char *arg)
 	else
 		printf("invalid flag, must be 'enabled' or 'disabled'.\n");
 }
-
-void
-command_multiboot(char *arg)
-{
-	char *filename;
-
-	filename = arg;
-	if (exec_multiboot(filename, gettrailer(arg)) < 0)
-		printf("multiboot: %s: %s\n", sprint_bootsel(filename),
-		       strerror(errno));
-	else
-		printf("boot returned\n");
-}
-

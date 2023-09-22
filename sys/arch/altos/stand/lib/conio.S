@@ -9,118 +9,40 @@
 	.text
 
 /**************************************************************************
-CLR - Clear screen
+int getchar(void)
 **************************************************************************/
-ENTRY(conclr)
-	pusha
-
-	call	_C_LABEL(prot_to_real)	# enter real mode
-	.code16
-
-	/* Clear screen. */
-	movw	$0x0600, %ax
-	movw	$0x0700, %bx
-	xorw	%cx, %cx
-	movw	$0x184f, %dx	/* 80x25 */
-	int	$0x10
-
-	/* Home cursor. */
-	movb	$0x02, %ah
-	xorw	%bx, %bx
-	xorw	%dx, %dx
-	int	$0x10
-
-	calll	_C_LABEL(real_to_prot) # back to protected mode
-	.code32
-
-	popa
+ENTRY(getchar)
+	pushl %ebx
+	movl $0x101, %ebx
+	int $0x28
+	and $0xff, %eax
+	popl %ebx
 	ret
 
 /**************************************************************************
-PUTC - Print a character
+void putchar(int c)
 **************************************************************************/
-ENTRY(conputc)
-	pusha
-
-	call	_C_LABEL(prot_to_real)	# enter real mode
-	.code16
-
-	movw	$1,%bx
-	movb	$0x0e,%ah
-	movb	%al, %cl
-	int	$0x10
-
-	calll	_C_LABEL(real_to_prot) # back to protected mode
-	.code32
-
-	popa
+ENTRY(putchar)
+	movl 4(%esp), %eax
+	pushl %ebx
+	movl $0x102, %ebx
+	int $0x28
+	cmp $0x0a, %eax
+	jne no_cr
+	movl $0x0d, %eax
+	int $0x28
+no_cr:
+	pop %ebx
 	ret
 
-/**************************************************************************
-GETC - Get a character
-**************************************************************************/
-ENTRY(congetc)
-	xorl	%eax, %eax
-	pusha
-
-	call	_C_LABEL(prot_to_real)	# enter real mode
-	.code16
-
-	movb	$0x0,%ah
-	int	$0x16
-	movb	%al,%bl
-
-	calll	_C_LABEL(real_to_prot) # back to protected mode
-	.code32
-
-	movb	%bl, 28(%esp)
-
-	popa
-	ret
 
 /**************************************************************************
-ISSHIFT - Check for keyboard interrupt; via shift key
+int iskey() - Check for keyboard input
 **************************************************************************/
-ENTRY(conisshift)
-	xorl	%eax, %eax
-	pusha
-
-	call	_C_LABEL(prot_to_real)	# enter real mode
-	.code16
-
-	xor	%bx,%bx
-	movb	$0x2,%ah
-	int	$0x16
-	testb	$3,%al
-	setnz	%bl
-
-	calll	_C_LABEL(real_to_prot) # back to protected mode
-	.code32
-
-	movb	%bl, 28(%esp)
-
-	popa
-	ret
-
-/**************************************************************************
-ISKEY - Check for keyboard input
-**************************************************************************/
-ENTRY(coniskey)
-	xorl	%eax, %eax
-	pusha
-
-	call	_C_LABEL(prot_to_real)	# enter real mode
-	.code16
-
-	xor	%bx,%bx
-	movb	$0x1,%ah
-	int	$0x16
-	setnz	%bl
-
-	calll	_C_LABEL(real_to_prot) # back to protected mode
-	.code32
-
-	movb	%bl, 28(%esp)
-
-	popa
+ENTRY(iskey)
+	pushl %ebx
+	movl $0x0b, %ebx
+	int $0x28
+	and $0xff, %eax
+	popl %ebx
 	ret

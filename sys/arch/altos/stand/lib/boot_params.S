@@ -2,14 +2,26 @@
 
 /* Default boot parameters - must match struct x86_boot_params in bootblock.h */
 
-#ifdef BOOTPARAM_DEFFLAGS
-	.long	BOOTPARAM_DEFFLAGS
-#else
-	.long	0x0
-#endif
-	.long	5			/* timeout in seconds */
-	.long	0			/* console device 0 => CONSDEV_PC */
-	.long	9600			/* serial baud rate */
-	.space	16			/* md5 boot password */
-	.space	64			/* keyboard xlat map */
-	.long	0			/* console ioaddr */
+	.globl _C_LABEL(g_disk_io)
+_C_LABEL(g_disk_io):
+DRIVE:
+	.word 0x0002 			// drive
+	.word 0x0008 			// command, Read SCSI
+STATUS:
+	.word 0xffff			// status
+	.long 0xffffffff  		// errno
+ADDR:
+	.long 0x00000000 		// addr
+ID_BIG_ENDIAN:
+	.byte 0x00, 0x00
+BLK_ADDR_BIG_ENDIAN:
+	.byte 0x00, 0x00, 0x08 // on HDD, altos reads 8th sectors stating with the 8th sector 
+BLK_COUNT:
+	.byte 0x08
+	.byte 0x00, 0x00 // fill 0 ?
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 // fill 0
+.balign	4
+.globl _C_LABEL(g_crc32)
+_C_LABEL(g_crc32):
+	.long	0xbadb00b4		/* crc32 of boot_params */
+

@@ -16,7 +16,7 @@
 # Default values:
 I386DST?=		${.OBJDIR}/lib/i386
 
-#I386DIR=		$S/arch/i386/stand/lib
+#I386DIR=		$S/arch/altos/stand/lib
 I386LIB=		${I386DST}/libi386.a
 
 CWARNFLAGS.clang+=	-Wno-tautological-compare

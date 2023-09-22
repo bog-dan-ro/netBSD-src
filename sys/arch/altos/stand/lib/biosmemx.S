@@ -38,49 +38,9 @@
  * buffer[1]: extmem above 16M, in 64k units
  */
 ENTRY(getextmem2)
-	pushl	%ebp
-	movl	%esp,%ebp
-	pushl	%ebx
-	pushl	%ecx
-	pushl	%edx
-	push	%esi
-	push	%edi
-
-	call	_C_LABEL(prot_to_real)
-	.code16
-
-	xorl	%ebx,%ebx
-	movl	$0xe801,%eax
-	int	$0x15
-	pushf
-
-	movw	%si,%ax
-	orw	%si,%bx
-	jz	1f		/* if zero use configured values */
-	movw	%cx,%ax		/* k below 16M (max 0x3c00 = 15MB) */
-	movw	%dx,%bx		/* 64k above 16M */
-1:
-	popf
-	setc	%bl
-
-	calll	_C_LABEL(real_to_prot)
-	.code32
-
-	movl	8(%ebp),%edi
-	xorl	%eax,%eax
-	movw	%cx,%ax
-	stosl
-	movw	%dx,%ax
-	stosl
-	movb	%bl,%al
-	cbw
-
-	pop	%edi
-	pop	%esi
-	popl	%edx
-	popl	%ecx
-	popl	%ebx
-	popl	%ebp
+#warning FIXME !!!
+	xorl %eax,%eax
+	dec	%eax
 	ret
 
 /*
@@ -92,82 +52,53 @@ ENTRY(getextmem2)
  * buffer[4]: type
  */
 ENTRY(getmementry)
-	pushl	%ebp
-	movl	%esp,%ebp
-	pushl	%ebx
-	pushl	%ecx
-	pushl	%edx
-	push	%esi
-	push	%edi
-
-	movl	8(%ebp),%eax
-	movl	0(%eax),%ebx		/* index */
-	movl	$20,%ecx		/* Buffer size */
-	movl	$0x534d4150,%edx	/* "SMAP" */
-	movl	12(%ebp),%edi		/* buffer address */
-
-	call	_C_LABEL(prot_to_real)
-	.code16
-
-	push	%di
-	shrl	$4,%edi
-	mov	%ds,%ax
-	add	%di,%ax
-	mov	%ax,%es
-	pop	%di
-	and	$0xf,%di		/* buffer address now in ES:DI */
-
-	movl	$0xe820,%eax		/* Some BIOS check EAX value */
-	int	$0x15
-
-	setc	%cl
-
-	calll	_C_LABEL(real_to_prot)
-	.code32
-
-	movl	8(%ebp),%eax
-	movl	%ebx,0(%eax)		/* updated index */
-	xorl	%eax,%eax
-	movb	%cl,%al
-
-	pop	%edi
-	pop	%esi
-	popl	%edx
-	popl	%ecx
-	popl	%ebx
-	popl	%ebp
+#warning FIXME !!!
+	xorl %eax,%eax
+	dec	%eax
 	ret
 
-/*
- * int biosA20(void)
- *
- * return: 0=ok, else error
- */
-ENTRY(biosA20)
-	pushl	%ebp
-	movl	%esp,%ebp
-	pushl	%ebx
-	pushl	%ecx
-	pushl	%edx
-	push	%esi
-	push	%edi
+	# pushl	%ebp
+	# movl	%esp,%ebp
+	# pushl	%ebx
+	# pushl	%ecx
+	# pushl	%edx
+	# push	%esi
+	# push	%edi
 
-	call	_C_LABEL(prot_to_real)
-	.code16
+	# movl	8(%ebp),%eax
+	# movl	0(%eax),%ebx		/* index */
+	# movl	$20,%ecx		/* Buffer size */
+	# movl	$0x534d4150,%edx	/* "SMAP" */
+	# movl	12(%ebp),%edi		/* buffer address */
 
-	movl	$0x2401,%eax
-	int	$0x15
-	setc	%cl
+	# call	_C_LABEL(prot_to_real)
+	# .code16
 
-	calll	_C_LABEL(real_to_prot)
-	.code32
+	# push	%di
+	# shrl	$4,%edi
+	# mov	%ds,%ax
+	# add	%di,%ax
+	# mov	%ax,%es
+	# pop	%di
+	# and	$0xf,%di		/* buffer address now in ES:DI */
 
-	movzbl	%cl,%eax
+	# movl	$0xe820,%eax		/* Some BIOS check EAX value */
+	# int	$0x15
 
-	pop	%edi
-	pop	%esi
-	popl	%edx
-	popl	%ecx
-	popl	%ebx
-	popl	%ebp
-	ret
+	# setc	%cl
+
+	# calll	_C_LABEL(real_to_prot)
+	# .code32
+
+	# movl	8(%ebp),%eax
+	# movl	%ebx,0(%eax)		/* updated index */
+	# xorl	%eax,%eax
+	# movb	%cl,%al
+
+	# pop	%edi
+	# pop	%esi
+	# popl	%edx
+	# popl	%ecx
+	# popl	%ebx
+	# popl	%ebp
+	# ret

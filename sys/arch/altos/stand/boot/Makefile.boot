@@ -11,8 +11,7 @@ NEWVERSWHAT?= "BIOS Boot"
 
 AFLAGS.biosboot.S= ${${ACTIVE_CC} == "clang":?-no-integrated-as:}
 
-SOURCES?= biosboot.S boot2.c conf.c devopen.c exec.c \
-	  exec_multiboot1.c exec_multiboot2.c
+SOURCES?= biosboot.S boot2.c conf.c devopen.c exec.c 
 SRCS= ${SOURCES}
 
 .include <bsd.init.mk>
@@ -57,23 +56,25 @@ CPPFLAGS+= -I$S
 CPPFLAGS+= -DKERNEL_DIR
 .endif
 
-CPPFLAGS+= -DSUPPORT_PS2
-CPPFLAGS+= -DDIRECT_SERIAL
-CPPFLAGS+= -DSUPPORT_SERIAL=boot_params.bp_consdev
+CPPFLAGS+= -DHEAP_VARIABLE
+CPPFLAGS+= -DMEMSIZE=0x100000
 
-CPPFLAGS+= -DCONSPEED=boot_params.bp_conspeed
-CPPFLAGS+= -DCONSADDR=boot_params.bp_consaddr
-CPPFLAGS+= -DCONSOLE_KEYMAP=boot_params.bp_keymap
+#CPPFLAGS+= -DDIRECT_SERIAL
+#CPPFLAGS+= -DSUPPORT_SERIAL=boot_params.bp_consdev
 
-CPPFLAGS+= -DSUPPORT_CD9660
-CPPFLAGS+= -DSUPPORT_USTARFS
-CPPFLAGS+= -DSUPPORT_DOSFS
-CPPFLAGS+= -DSUPPORT_EXT2FS
+#CPPFLAGS+= -DCONSPEED=boot_params.bp_conspeed
+#CPPFLAGS+= -DCONSADDR=boot_params.bp_consaddr
+#CPPFLAGS+= -DCONSOLE_KEYMAP=boot_params.bp_keymap
+
+#CPPFLAGS+= -DSUPPORT_CD9660
+#CPPFLAGS+= -DSUPPORT_USTARFS
+#CPPFLAGS+= -DSUPPORT_DOSFS
+#CPPFLAGS+= -DSUPPORT_EXT2FS
 #CPPFLAGS+= -DSUPPORT_MINIXFS3
-CPPFLAGS+= -DPASS_BIOSGEOM
-CPPFLAGS+= -DPASS_MEMMAP
+#CPPFLAGS+= -DPASS_BIOSGEOM
+#CPPFLAGS+= -DPASS_MEMMAP
 #CPPFLAGS+= -DBOOTPASSWD
-CPPFLAGS+= -DEPIA_HACK
+#CPPFLAGS+= -DEPIA_HACK
 #CPPFLAGS+= -DDEBUG_MEMSIZE
 #CPPFLAGS+= -DBOOT_MSG_COM0
 CPPFLAGS+= -DLIBSA_ENABLE_LS_OP
@@ -81,7 +82,7 @@ CPPFLAGS+= -DLIBSA_ENABLE_LS_OP
 # The biosboot code is linked to 'virtual' address of zero and is
 # loaded at physical address 0x10000.
 # XXX The heap values should be determined from _end.
-SAMISCCPPFLAGS+= -DHEAP_START=0x40000 -DHEAP_LIMIT=0x70000
+# SAMISCCPPFLAGS+= -DHEAP_START=0x18000 -DHEAP_LIMIT=0x10000
 SAMISCCPPFLAGS+= -DLIBSA_PRINTF_LONGLONG_SUPPORT
 SAMISCMAKEFLAGS+= SA_USE_CREAD=yes	# Read compressed kernels
 SAMISCMAKEFLAGS+= SA_INCLUDE_NET=no	# Netboot via TFTP, NFS
@@ -90,7 +91,7 @@ CPPFLAGS+=	-Wno-pointer-sign
 
 # CPPFLAGS+= -DBOOTXX_RAID1_SUPPORT
 
-I386_STAND_DIR?= $S/arch/i386/stand
+I386_STAND_DIR?= $S/arch/altos/stand
 
 ### find out what to use for libi386
 I386DIR= ${I386_STAND_DIR}/lib
@@ -114,7 +115,7 @@ Z_AS= library
 .include "${S}/lib/libz/Makefile.inc"
 LIBZ= ${ZLIB}
 
-LDSCRIPT ?= $S/arch/i386/conf/stand.ldscript
+LDSCRIPT ?= $S/arch/altos/conf/stand.ldscript
 
 cleandir distclean: .WAIT cleanlibdir
 
@@ -122,7 +123,6 @@ cleanlibdir:
 	-rm -rf lib
 
 LIBLIST= ${LIBI386} ${LIBSA} ${LIBZ} ${LIBKERN} ${LIBI386} ${LIBSA}
-# LIBLIST= ${LIBSA} ${LIBKERN} ${LIBI386} ${LIBSA} ${LIBZ} ${LIBKERN}
 
 CLEANFILES+= ${PROG}.tmp ${PROG}.map ${PROG}.sym
 
@@ -157,5 +157,5 @@ ${PROG}: ${OBJS} ${LIBLIST} ${LDSCRIPT} ${.CURDIR}/../Makefile.boot
 CWARNFLAGS.gcc+=	${GCC_NO_ADDR_OF_PACKED_MEMBER}
 
 .include <bsd.prog.mk>
-KLINK_MACHINE=	i386
+KLINK_MACHINE=	altos
 .include <bsd.klinks.mk>

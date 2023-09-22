@@ -1,6 +1,6 @@
 # $NetBSD: Makefile.satest,v 1.2 1999/02/19 19:53:01 drochner Exp $
 
-I386_STAND_DIR?= $S/arch/i386/stand
+I386_STAND_DIR?= $S/arch/altos/stand
 
 .PATH: ${I386_STAND_DIR}/lib/test ${I386_STAND_DIR}/lib ${I386_STAND_DIR}/libsa
 

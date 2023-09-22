@@ -182,9 +182,9 @@ doboottypemenu(void)
 		}
 		if (choice < 0)
 			continue;
-		if (!strcmp(bootcfg_info.command[choice], "prompt") &&
+		if (!strcmp(bootcfg_info.command[choice], "prompt")/* &&
 		    ((boot_params.bp_flags & X86_BP_FLAGS_PASSWORD) == 0 ||
-		    check_password((char *)boot_params.bp_password))) {
+		    check_password((char *)boot_params.bp_password))*/) {
 			printf("type \"?\" or \"help\" for help.\n");
 			bootmenu(); /* does not return */
 		} else {

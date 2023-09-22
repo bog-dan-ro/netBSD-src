@@ -37,21 +37,10 @@
 
 	.text
 
-/* Call INT 19 to do the equivalent of CTL-ALT-DEL */
-
 ENTRY(reboot)
-	pusha
-
-	call	_C_LABEL(prot_to_real)
-	.code16
-
-	int	$0x19
-
-	/* NOTE: We should never even get past this point. */
-
-	calll	_C_LABEL(real_to_prot)
-	.code32
-
-	movl	%ebx, 28(%esp)
-	popa
-	ret
+	// FIXME !!!
+//	ljmp $0x100, $0xfff5
+_rtt:
+	sti
+	hlt
+	jmp _rtt

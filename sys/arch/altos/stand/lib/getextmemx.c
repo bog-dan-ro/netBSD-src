@@ -40,14 +40,6 @@ getextmemx(void)
 {
 	int buf[5], i;
 	int extmem = getextmem1();
-#ifdef SUPPORT_PS2
-	struct {
-		uint16_t len;
-		uint32_t dta[8];
-		/* pad to 64 bytes - without this, machine would reset */
-		uint8_t __pad[30];
-	} __packed bufps2;
-#endif
 
 #ifdef DEBUG_MEMSIZE
 	printf("extmem1: %xk\n", extmem);
@@ -77,17 +69,5 @@ getextmemx(void)
 		    && extmem < buf[2] / 1024)
 			extmem = buf[2] / 1024;
 	} while (i);
-
-#ifdef SUPPORT_PS2
-	/* use local memory information from RETURN MEMORY-MAP INFORMATION */
-	if (!getextmemps2((void *) &bufps2)) {
-		int help = bufps2.dta[0];
-		if (help == 15 * 1024)
-			help += bufps2.dta[1];
-		if (extmem < help)
-			extmem = help;
-	}
-#endif
-
 	return extmem;
 }

@@ -46,5 +46,5 @@ bi_add(struct btinfo_common *what, int type, int size)
 	if (bootinfo->nentries >= BTINFO_MAX) {
 		panic("bootinfo too big");
 	}
-	bootinfo->entry[bootinfo->nentries++] = vtophys(what);
+	bootinfo->entry[bootinfo->nentries++] = (uint32_t)(boot_data_addr + what); // TODO check this !!!
 }

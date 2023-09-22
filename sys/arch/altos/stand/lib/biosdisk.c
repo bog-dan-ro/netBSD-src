@@ -102,8 +102,18 @@
 
 #define BIOSDISKNPART 26
 
+uint16_t get_hdd_id(void)
+{
+	return (uint16_t)g_disk_io.hdd.id[0] << 8 | g_disk_io.hdd.id[1];
+}
+
+void set_hdd_id(uint16_t id)
+{
+	g_disk_io.hdd.id[0] = (uint8_t)(id >> 8);
+	g_disk_io.hdd.id[1] = (uint8_t)id;
+}
+
 struct biosdisk {
-	struct biosdisk_ll ll;
 	daddr_t         boff;
 	char            buf[BIOSDISK_BUFSIZE];
 #if !defined(NO_DISKLABEL) || !defined(NO_GPT)
@@ -250,27 +260,25 @@ biosdisk_strategy(void *devdata, int flag, daddr_t dblk, size_t size,
 
 	d = (struct biosdisk *) devdata;
 
-	if (d->ll.type == BIOSDISK_TYPE_CD)
-		dblk = devb2cdb(dblk);
 
 	dblk += d->boff;
 
-	blks = size / d->ll.secsize;
-	if (blks && readsects(&d->ll, dblk, blks, buf, 0)) {
+	blks = size / 512;
+	if (blks && readsects(dblk, blks, buf, 0)) {
 		if (rsize)
 			*rsize = 0;
 		return EIO;
 	}
 
 	/* needed for CD */
-	frag = size % d->ll.secsize;
+	frag = size % 512;
 	if (frag) {
-		if (readsects(&d->ll, dblk + blks, 1, d->buf, 0)) {
+		if (readsects(dblk + blks, 1, d->buf, 0)) {
 			if (rsize)
-				*rsize = blks * d->ll.secsize;
+				*rsize = blks * 512;
 			return EIO;
 		}
-		memcpy(buf + blks * d->ll.secsize, d->buf, frag);
+		memcpy(buf + blks * 512, d->buf, frag);
 	}
 
 	if (rsize)
@@ -287,15 +295,6 @@ alloc_biosdisk(int biosdev)
 	if (d == NULL)
 		return NULL;
 	memset(d, 0, sizeof(*d));
-
-	d->ll.dev = biosdev;
-	if (set_geometry(&d->ll, NULL)) {
-#ifdef DISK_DEBUG
-		printf("no geometry information\n");
-#endif
-		dealloc_biosdisk(d);
-		return NULL;
-	}
 	return d;
 }
 
@@ -367,7 +366,7 @@ check_gpt(struct biosdisk *d, daddr_t rf_offset, daddr_t sector)
 	int i, j;
 
 	/* read in gpt_hdr sector */
-	if (readsects(&d->ll, sector, 1, d->buf, 1)) {
+	if (readsects(sector, 1, d->buf, 1)) {
 #ifdef DISK_DEBUG
 		printf("Error reading GPT header at %"PRId64"\n", sector);
 #endif
@@ -393,10 +392,10 @@ check_gpt(struct biosdisk *d, daddr_t rf_offset, daddr_t sector)
 	bi_wedge.matchblk = sector;
 	bi_wedge.matchnblks = 1;
 
-	md5(bi_wedge.matchhash, d->buf, d->ll.secsize);
+	md5(bi_wedge.matchhash, d->buf, 512);
 #endif
 
-	sectors = sizeof(d->buf)/d->ll.secsize; /* sectors per buffer */
+	sectors = sizeof(d->buf)/512; /* sectors per buffer */
 	entries = sizeof(d->buf)/gpth.hdr_entsz; /* entries per buffer */
 	entblk = gpth.hdr_lba_table + rf_offset;
 	crc = crc32(0, NULL, 0);
@@ -408,8 +407,8 @@ check_gpt(struct biosdisk *d, daddr_t rf_offset, daddr_t sector)
 		size = MIN(sizeof(d->buf),
 		    (gpth.hdr_entries - entry) * gpth.hdr_entsz);
 		entries = size / gpth.hdr_entsz;
-		sectors = roundup(size, d->ll.secsize) / d->ll.secsize;
-		if (readsects(&d->ll, entblk, sectors, d->buf, 1))
+		sectors = roundup(size, 512) / 512;
+		if (readsects(entblk, sectors, d->buf, 1))
 			return -1;
 		entblk += sectors;
 		crc = crc32(crc, (const void *)d->buf, size);
@@ -469,11 +468,10 @@ check_gpt(struct biosdisk *d, daddr_t rf_offset, daddr_t sector)
 static int
 read_gpt(struct biosdisk *d, daddr_t rf_offset, daddr_t rf_size)
 {
-	struct biosdisk_extinfo ed;
 	daddr_t gptsector[2];
 	int i, error;
 
-	if (d->ll.type != BIOSDISK_TYPE_HD)
+	if (g_disk_io.drive != Drive_HardDisk)
 		/* No GPT on floppy and CD */
 		return -1;
 
@@ -482,21 +480,7 @@ read_gpt(struct biosdisk *d, daddr_t rf_offset, daddr_t rf_size)
 		gptsector[1] = rf_offset + rf_size - 1;
 	} else {
 		gptsector[0] = GPT_HDR_BLKNO;
-		if (set_geometry(&d->ll, &ed) == 0 &&
-		    d->ll.flags & BIOSDISK_INT13EXT) {
-			gptsector[1] = ed.totsec - 1;
-			/* Sanity check values returned from BIOS */
-			if (ed.sbytes >= 512 &&
-			    (ed.sbytes & (ed.sbytes - 1)) == 0)
-				d->ll.secsize = ed.sbytes;
-		} else {
-#ifdef DISK_DEBUG
-			printf("Unable to determine extended disk geometry - "
-				"using CHS\n");
-#endif
-			/* at least try some other reasonable values then */
-			gptsector[1] = d->ll.chs_sectors - 1;
-		}
+		gptsector[1] = -1;
 	}
 
 	for (i = 0; i < __arraycount(gptsector); i++) {
@@ -551,7 +535,7 @@ check_label(struct biosdisk *d, daddr_t sector)
 	struct disklabel *lp;
 
 	/* find partition in NetBSD disklabel */
-	if (readsects(&d->ll, sector + LABELSECTOR, 1, d->buf, 0)) {
+	if (readsects(sector + LABELSECTOR, 1, d->buf, 0)) {
 #ifdef DISK_DEBUG
 		printf("Error reading disklabel\n");
 #endif
@@ -575,7 +559,7 @@ check_label(struct biosdisk *d, daddr_t sector)
 	bi_wedge.matchblk = sector + LABELSECTOR;
 	bi_wedge.matchnblks = 1;
 
-	md5(bi_wedge.matchhash, d->buf, d->ll.secsize);
+	md5(bi_wedge.matchhash, d->buf, 512);
 
 	return 0;
 }
@@ -589,7 +573,7 @@ read_minix_subp(struct biosdisk *d, struct disklabel* dflt_lbl,
 	int typ;
 	struct partition *p;
 
-	if (readsects(&d->ll, sector, 1, d->buf, 0)) {
+	if (readsects(sector, 1, d->buf, 0)) {
 #ifdef DISK_DEBUG
 		printf("Error reading MFS sector %"PRId64"\n", sector);
 #endif
@@ -614,38 +598,6 @@ read_minix_subp(struct biosdisk *d, struct disklabel* dflt_lbl,
 	return 0;
 }
 
-#if defined(EFIBOOT) && defined(SUPPORT_CD9660)
-static int
-check_cd9660(struct biosdisk *d)
-{
-	struct biosdisk_extinfo ed;
-	struct iso_primary_descriptor *vd;
-	daddr_t bno;
-
-	for (bno = 16;; bno++) {
-		if (readsects(&d->ll, bno, 1, d->buf, 0))
-			return -1;
-		vd = (struct iso_primary_descriptor *)d->buf;
-		if (memcmp(vd->id, ISO_STANDARD_ID, sizeof vd->id) != 0)
-			return -1;
-		if (isonum_711(vd->type) == ISO_VD_END)
-			return -1;
-		if (isonum_711(vd->type) == ISO_VD_PRIMARY)
-			break;
-	}
-	if (isonum_723(vd->logical_block_size) != ISO_DEFAULT_BLOCK_SIZE)
-		return -1;
-
-	if (set_geometry(&d->ll, &ed))
-		return -1;
-
-	memset(d->part, 0, sizeof(d->part));
-	d->part[0].fstype = FS_ISO9660;
-	d->part[0].offset = 0;
-	d->part[0].size = ed.totsec;
-	return 0;
-}
-#endif
 
 static int
 read_label(struct biosdisk *d, daddr_t offset)
@@ -667,7 +619,7 @@ read_label(struct biosdisk *d, daddr_t offset)
 
 	d->boff = 0;
 
-	if (d->ll.type != BIOSDISK_TYPE_HD)
+	if (g_disk_io.drive != Drive_HardDisk)
 		/* No label on floppy and CD */
 		return -1;
 
@@ -680,7 +632,7 @@ read_label(struct biosdisk *d, daddr_t offset)
 	for (;;) {
 		this_ext = ext_base + next_ext;
 		next_ext = offset;
-		if (readsects(&d->ll, this_ext, 1, d->buf, 0)) {
+		if (readsects(this_ext, 1, d->buf, 0)) {
 #ifdef DISK_DEBUG
 			printf("error reading MBR sector %u\n", this_ext);
 #endif
@@ -753,14 +705,6 @@ read_label(struct biosdisk *d, daddr_t offset)
 	error = check_label(d, sector);
 	if (error >= 0)
 		return error;
-
-#if defined(EFIBOOT) && defined(SUPPORT_CD9660)
-	/* Check CD/DVD */
-	error = check_cd9660(d);
-	if (error >= 0)
-		return error;
-#endif
-
 	/*
 	 * Nothing at start of disk, return info from mbr partitions.
 	 */
@@ -792,62 +736,17 @@ read_partitions(struct biosdisk *d, daddr_t offset, daddr_t size)
 }
 #endif
 
-#ifndef NO_RAIDFRAME
-static void
-raidframe_probe(struct raidframe *raidframe, int *raidframe_count,
-		struct biosdisk *d, int part)
-{
-	int i = *raidframe_count;
-	struct RF_ComponentLabel_s label;
-	daddr_t offset;
-
-	if (i + 1 > RAIDFRAME_NDEV)
-		return;
-
-	offset = d->part[part].offset;
-	if ((biosdisk_read_raidframe(d->ll.dev, offset, &label)) != 0)
-		return;
-
-	if (label.version != RF_COMPONENT_LABEL_VERSION)
-		printf("Unexpected raidframe label version\n");
-
-	raidframe[i].last_unit = label.last_unit;
-	raidframe[i].serial = label.serial_number;
-	raidframe[i].biosdev = d->ll.dev;
-	raidframe[i].parent_part = part;
-#ifndef NO_GPT
-	if (d->part[part].part_name)
-		strlcpy(raidframe[i].parent_name,
-			d->part[part].part_name, MAXDEVNAME);
-	else
-		raidframe[i].parent_name[0] = '\0';
-#endif
-	raidframe[i].offset = offset;
-	raidframe[i].size = label.__numBlocks;
-
-	(*raidframe_count)++;
-
-	return;
-}
-#endif
-
 void
 biosdisk_probe(void)
 {
 	struct biosdisk *d;
-	struct biosdisk_extinfo ed;
-#ifndef NO_RAIDFRAME
-	struct raidframe raidframe[RAIDFRAME_NDEV];
-	int raidframe_count = 0;
-#endif
-	uint64_t size;
 	int first;
 	int i;
 #if !defined(NO_DISKLABEL) || !defined(NO_GPT)
 	int part;
 #endif
 
-	for (i = 0; i < MAX_BIOSDISKS + 2; i++) {
+	for (i = 0; i < 1; i++) {
 		first = 1;
 		d = alloc(sizeof(*d));
 		if (d == NULL) {
@@ -855,39 +754,22 @@ biosdisk_probe(void)
 			return;
 		}
 		memset(d, 0, sizeof(*d));
-		memset(&ed, 0, sizeof(ed));
-		if (i >= MAX_BIOSDISKS)
-			d->ll.dev = 0x00 + i - MAX_BIOSDISKS;	/* fd */
-		else
-			d->ll.dev = 0x80 + i;			/* hd/cd */
-		if (set_geometry(&d->ll, &ed))
-			goto next_disk;
 		printf("disk ");
-		switch (d->ll.type) {
-		case BIOSDISK_TYPE_CD:
-			printf("cd0\n  cd0a\n");
+
+		switch (g_disk_io.drive) {
+		case  Drive_HardDiskOld:
+			printf("mt0\n");
 			break;
-		case BIOSDISK_TYPE_FD:
-			printf("fd%d\n", d->ll.dev & 0x7f);
-			printf("  fd%da\n", d->ll.dev & 0x7f);
+		case Drive_FloppyHighSpeed:
+		case Drive_FloppyLowSpeed:
+			printf("fd0\n");
 			break;
-		case BIOSDISK_TYPE_HD:
-			printf("hd%d", d->ll.dev & 0x7f);
-			if (d->ll.flags & BIOSDISK_INT13EXT) {
-				printf(" size ");
-				size = ed.totsec * ed.sbytes;
-				if (size >= (10ULL * 1024 * 1024 * 1024))
-					printf("%"PRIu64" GB",
-					    size / (1024 * 1024 * 1024));
-				else
-					printf("%"PRIu64" MB",
-					    size / (1024 * 1024));
-			}
-			printf("\n");
+		case Drive_HardDisk:
+			printf("hd%d\n", (int)get_hdd_id());
 			break;
 		}
 #if !defined(NO_DISKLABEL) || !defined(NO_GPT)
-		if (d->ll.type != BIOSDISK_TYPE_HD)
+		if (g_disk_io.drive != Drive_HardDisk)
 			goto next_disk;
 
 		if (read_partitions(d, 0, 0) != 0)
@@ -913,7 +795,7 @@ biosdisk_probe(void)
 				printf(" NAME=%s(", d->part[part].part_name);
 			else
 #endif
-				printf(" hd%d%c(", d->ll.dev & 0x7f, part + 'a');
+				printf(" hd%d%c(", (int)get_hdd_id(), part + 'a');
 
 #ifndef NO_GPT
 			if (d->part[part].guid != NULL)
@@ -945,7 +827,7 @@ next_disk:
 			return;
 		}
 
-		secsize = d->ll.secsize;
+		secsize = 512;
 
 		printf("raidframe raid%d serial %d in ",
 		       raidframe[i].last_unit, raidframe[i].serial);
@@ -954,7 +836,7 @@ next_disk:
 			printf("NAME=%s size ", raidframe[i].parent_name);
 		else
 #endif
-		printf("hd%d%c size ", d->ll.dev & 0x7f,
+		printf("hd%d%c size ", (int)get_hdd_id(),
 		       raidframe[i].parent_part + 'a');
 		if (raidframe[i].size >= (10ULL * 1024 * 1024 * 1024 / secsize))
 			printf("%"PRIu64" GB",
@@ -1022,7 +904,7 @@ next_raidrame:
  */
 
 int
-biosdisk_findpartition(int biosdev, daddr_t sector,
+biosdisk_findpartition(int biosdev,
 		       int *partition, const char **part_name)
 {
 #if defined(NO_DISKLABEL) && defined(NO_GPT)
@@ -1042,7 +924,7 @@ biosdisk_findpartition(int biosdev, daddr_t sector,
 #endif
 
 #ifdef DISK_DEBUG
-	printf("looking for partition device %x, sector %"PRId64"\n", biosdev, sector);
+	printf("looking for partition device %x\n", biosdev);
 #endif
 
 	/* default to first partition */
@@ -1059,10 +941,6 @@ biosdisk_findpartition(int biosdev, daddr_t sector,
 		for (i = 0; i < BIOSDISKNPART; i++) {
 			if (d->part[i].fstype == FS_UNUSED)
 				continue;
-
-			if (d->part[i].offset == sector &&
-			    biosboot_sector_part == -1)
-				biosboot_sector_part = i;
 
 #ifndef NO_GPT
 			if (d->part[i].attr & GPT_ENT_ATTR_BOOTME &&
@@ -1150,49 +1028,6 @@ out:
 #endif /* NO_DISKLABEL && NO_GPT */
 }
 
-#ifndef NO_RAIDFRAME
-int
-biosdisk_read_raidframe(int biosdev, daddr_t offset,
-			struct RF_ComponentLabel_s *label)
-{
-#if defined(NO_DISKLABEL) && defined(NO_GPT)
-	return ENOTSUP;
-#else
-	struct biosdisk *d;
-	struct biosdisk_extinfo ed;
-	daddr_t size;
-	int rv = -1;
-
-	/* Look for netbsd partition that is the dos boot one */
-	d = alloc_biosdisk(biosdev);
-	if (d == NULL)
-		goto out;
-
-	if (d->ll.type != BIOSDISK_TYPE_HD)
-		/* No raidframe on floppy and CD */
-		goto out;
-
-	if (set_geometry(&d->ll, &ed) != 0)
-		goto out;
-
-	/* Sanity check values returned from BIOS */
-	if (ed.sbytes >= 512 &&
-	    (ed.sbytes & (ed.sbytes - 1)) == 0)
-		d->ll.secsize = ed.sbytes;
-
-	offset += (RF_COMPONENT_INFO_OFFSET / d->ll.secsize);
-	size = roundup(sizeof(*label), d->ll.secsize) / d->ll.secsize;
-	if (readsects(&d->ll, offset, size, d->buf, 0))
-		goto out;
-	memcpy(label, d->buf, sizeof(*label));
-	rv = 0;
-out:
-	if (d != NULL)
-		dealloc_biosdisk(d);
-	return rv;
-#endif /* NO_DISKLABEL && NO_GPT */
-}
-#endif /* NO_RAIDFRAME */
 
 #ifdef _STANDALONE
 static void
@@ -1217,7 +1052,6 @@ raidframe_part_offset(struct biosdisk *d, int part)
 	int i, candidate;
 
 	memset(&raidframe, 0, sizeof(raidframe));
-	raidframe.ll = d->ll;
 
 	rf_offset = d->part[part].offset + RF_PROTECTED_SECTORS;
 	rf_size = d->part[part].size;
@@ -1259,11 +1093,11 @@ biosdisk_open(struct open_file *f, ...)
 	}
 
 	partition = va_arg(ap, int);
-	bi_disk.biosdev = d->ll.dev;
+	bi_disk.biosdev = get_hdd_id();
 	bi_disk.partition = partition;
 	bi_disk.labelsector = -1;
 
-	bi_wedge.biosdev = d->ll.dev;
+	bi_wedge.biosdev = get_hdd_id();
 	bi_wedge.matchblk = -1;
 
 #if !defined(NO_DISKLABEL) || !defined(NO_GPT)
@@ -1324,10 +1158,6 @@ biosdisk_find_name(const char *fname, int *biosdev,
 	struct biosdisk *d;
 	char name[MAXDEVNAME + 1];
 	char *sep;
-#ifndef NO_RAIDFRAME
-	struct raidframe raidframe[RAIDFRAME_NDEV];
-	int raidframe_count = 0;
-#endif
 	int i;
 	int part;
 	int ret = -1;
@@ -1338,7 +1168,7 @@ biosdisk_find_name(const char *fname, int *biosdev,
 	if (sep)
 		*sep = '\0';
 
-	for (i = 0; i < MAX_BIOSDISKS; i++) {
+	for (i = 0; i < 1; i++) {
 		d = alloc(sizeof(*d));
 		if (d == NULL) {
 			printf("Out of memory\n");
@@ -1346,11 +1176,7 @@ biosdisk_find_name(const char *fname, int *biosdev,
 		}
 
 		memset(d, 0, sizeof(*d));
-		d->ll.dev = 0x80 + i;			/* hd/cd */
-		if (set_geometry(&d->ll, NULL))
-			goto next_disk;
-
-		if (d->ll.type != BIOSDISK_TYPE_HD)
+		if (g_disk_io.drive != Drive_HardDisk)
 			goto next_disk;
 
 		if (read_partitions(d, 0, 0) != 0)
@@ -1374,7 +1200,7 @@ biosdisk_find_name(const char *fname, int *biosdev,
 #endif
 			if (d->part[part].part_name != NULL &&
 			    strcmp(d->part[part].part_name, name) == 0) {
-				*biosdev = d->ll.dev;
+				*biosdev = get_hdd_id();
 				*offset = d->part[part].offset;
 				*size = d->part[part].size;
 				ret = 0;
@@ -1489,11 +1315,7 @@ biosdisk_find_raid(const char *name, int *biosdev,
 		}
 
 		memset(d, 0, sizeof(*d));
-		d->ll.dev = 0x80 + i;			/* hd/cd */
-		if (set_geometry(&d->ll, NULL))
-			goto next_disk;
-
-		if (d->ll.type != BIOSDISK_TYPE_HD)
+		if (g_disk_io.drive != Drive_HardDisk)
 			goto next_disk;
 
 		if (read_partitions(d, 0, 0) != 0)
@@ -1587,18 +1409,18 @@ biosdisk_open_name(struct open_file *f, const char *name)
 		goto out;
 	}
 
-	bi_disk.biosdev = d->ll.dev;
+	bi_disk.biosdev = get_hdd_id();
 	bi_disk.partition = 0;
 	bi_disk.labelsector = -1;
 
-	bi_wedge.biosdev = d->ll.dev;
+	bi_wedge.biosdev = get_hdd_id();
 
 	/*
 	 * If we did not get wedge match info from check_gpt()
 	 * compute it now.
 	 */
 	if (bi_wedge.matchblk == -1) {
-		if (readsects(&d->ll, offset, 1, d->buf, 1)) {
+		if (readsects(offset, 1, d->buf, 1)) {
 #ifdef DISK_DEBUG
        			printf("Error reading sector at %"PRId64"\n", offset);
 #endif
@@ -1609,7 +1431,7 @@ biosdisk_open_name(struct open_file *f, const char *name)
 		bi_wedge.matchblk = offset;
 		bi_wedge.matchnblks = 1;
 
-		md5(bi_wedge.matchhash, d->buf, d->ll.secsize);
+		md5(bi_wedge.matchhash, d->buf, 512);
 	}
 
 	d->boff = offset;
@@ -1638,7 +1460,8 @@ biosdisk_close(struct open_file *f)
 	struct biosdisk *d = f->f_devdata;
 
 	/* let the floppy drive go off */
-	if (d->ll.type == BIOSDISK_TYPE_FD)
+	if (g_disk_io.drive == Drive_FloppyHighSpeed ||
+	    g_disk_io.drive == Drive_FloppyLowSpeed)
 		wait_sec(3);	/* 2s is enough on all PCs I found */
 
 	dealloc_biosdisk(d);

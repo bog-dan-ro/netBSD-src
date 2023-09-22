@@ -66,10 +66,6 @@
 #ifdef _STANDALONE
 #include <bootinfo.h>
 #endif
-#ifdef SUPPORT_PS2
-#include <biosmca.h>
-#endif
-
 static int dev2bios(char *, int, int *);
 
 static int
@@ -77,7 +73,7 @@ dev2bios(char *devname, int unit, int *biosdev)
 {
 
 	if (strcmp(devname, "hd") == 0)
-		*biosdev = 0x80 + unit;
+		*biosdev = 0x0 + unit;
 	else if (strcmp(devname, "fd") == 0)
 		*biosdev = 0x00 + unit;
 	else if (strcmp(devname, "cd") == 0)
@@ -89,28 +85,27 @@ dev2bios(char *devname, int unit, int *biosdev)
 }
 
 void
-bios2dev(int biosdev, daddr_t sector, char **devname, int *unit,
+bios2dev(int biosdev, char **devname, int *unit,
 	 int *partition, const char **part_name)
 {
-
-	/* set default */
-	*unit = biosdev & 0x7f;
-
-	if (biosdev & 0x80) {
-		/*
-		 * There seems to be no standard way of numbering BIOS
-		 * CD-ROM drives. The following method is a little tricky
-		 * but works nicely.
-		 */
-		if (biosdev >= 0x80 + get_harddrives()) {
-			*devname = "cd";
-			*unit = 0;		/* override default */
-		} else
-			*devname = "hd";
-	} else
+	switch (g_disk_io.drive) {
+	case  Drive_HardDiskOld:
+		*devname = "mt";
+		biosdev = 0;
+		break;
+	case Drive_FloppyHighSpeed:
+	case Drive_FloppyLowSpeed:
 		*devname = "fd";
+		biosdev = 0;
+		break;
+	case Drive_HardDisk:
+		*devname = "hd";
+		biosdev = ((int)g_disk_io.hdd.id[0] << 8) | g_disk_io.hdd.id[1];
+		break;
+	}
+	*unit = biosdev;
 
-	(void)biosdisk_findpartition(biosdev, sector, partition, part_name);
+	(void)biosdisk_findpartition(biosdev, partition, part_name);
 }
 
 #ifdef _STANDALONE

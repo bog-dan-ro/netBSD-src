@@ -35,14 +35,14 @@ typedef unsigned long physaddr_t;
 void vpbcopy(const void *, void *, size_t);
 void pvbcopy(const void *, void *, size_t);
 void pbzero(void *, size_t);
-physaddr_t vtophys(void *);
+extern uint32_t boot_data_addr;
+extern uint32_t kernel_data_addr;
 
 ssize_t pread(int, void *, size_t);
 void startprog(physaddr_t, uint32_t, uint32_t *, physaddr_t);
 void multiboot(physaddr_t, physaddr_t, physaddr_t, uint32_t);
 
 int exec_netbsd(const char *, physaddr_t, int, int, void (*)(void));
-int exec_multiboot(const char *, char *);
 
 void delay(int);
 int getbasemem(void);
@@ -56,10 +56,8 @@ int biosvideomode(void);
 #endif
 void printmemlist(void);
 void reboot(void);
-void gateA20(void);
-
+void puts(const char *str);
 void clear_pc_screen(void);
-void initio(int);
 #define CONSDEV_PC 0
 #define CONSDEV_COM0 1
 #define CONSDEV_COM1 2
@@ -99,12 +97,6 @@ struct multiboot_package *probe_multiboot2(const char *);
 /* this is in "user code"! */
 int parsebootfile(const char *, char **, char **, int *, int *, const char **);
 
-#ifdef XMS
-physaddr_t ppbcopy(physaddr_t, physaddr_t, int);
-int checkxms(void);
-physaddr_t xmsalloc(int);
-#endif
-
 /* parseutils.c */
 char *gettrailer(char *);
 int parseopts(const char *, int *);
@@ -125,28 +117,16 @@ extern const struct bootblk_command commands[];
 /* asm bios/dos calls */
 __compactcall int biosdisk_extread(int, void *);
 int biosdisk_read(int, int, int, int, int, void *);
-__compactcall int biosdisk_reset(int);
 
 __compactcall int biosgetrtc(u_long *);
 int biosgetsystime(void);
-int comgetc(int);
-void cominit(int);
-__compactcall int computc(int, int);
-int comstatus(int);
-int congetc(void);
-int conisshift(void);
-int coniskey(void);
-__compactcall void conputc(int);
-void conclr(void);
 
 int getextmem2(int *);
 __compactcall int getextmemps2(void *);
 int getmementry(int *, int *);
 
-__compactcall int biosdisk_int13ext(int);
-__compactcall int biosdisk_getinfo(int);
+
 struct biosdisk_extinfo;
-__compactcall int biosdisk_getextinfo(int, struct biosdisk_extinfo *);
 int get_harddrives(void);
 void biosdisk_probe(void);
 
