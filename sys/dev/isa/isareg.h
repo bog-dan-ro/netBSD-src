@@ -42,7 +42,7 @@
  * Input / Output Port Assignments
  */
 
-#ifndef IO_ISABEGIN
+#if !defined(IO_ISABEGIN)/* && !defined(ALTOS)*/
 #define	IO_ISABEGIN	0x000		/* 0x000 - Beginning of I/O Registers */
 
 		/* CPU Board */
@@ -153,8 +153,13 @@
  */
 
 #ifndef	IOM_BEGIN
+#ifndef ALTOS
 #define	IOM_BEGIN	0x0a0000		/* Start of I/O Memory "hole" */
 #define	IOM_END		0x100000		/* End of I/O Memory "hole" */
+#else /* ALTOS */
+#define	IOM_BEGIN	0x02200000		/* Start of I/O Memory "hole" */
+#define	IOM_END		0x02201000		/* End of I/O Memory "hole" */
+#endif /* !ALTOS */
 #define	IOM_SIZE	(IOM_END - IOM_BEGIN)
 
 /*

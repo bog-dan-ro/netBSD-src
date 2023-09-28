@@ -89,36 +89,37 @@ static daddr_t  ra_first;
 #define BIOSDISK_RETRIES 5
 #endif
 
-
 static int
 do_read(daddr_t dblk, int num, char *buf)
 {
 
-	if (num > 0x08)
-		num = 0x08;
+		if (num > 0x08)
+				num = 0x08;
+		memset(&g_disk_io, 0, sizeof(struct DiskIoDMA));
+		g_disk_io.drive = Drive_HardDisk;
+		g_disk_io.command = Command_ReadSCSI;
+		g_disk_io.status = 0xffff;
+		g_disk_io.addr = (uint32_t) (boot_data_addr + buf);
+		g_disk_io.hdd.id[0] = g_disk_io.hdd.id[1] =0;
+		g_disk_io.hdd.blk_id[2] = (uint8_t)dblk;
+		g_disk_io.hdd.blk_id[1] = (uint8_t)(dblk >> 8);
+		g_disk_io.hdd.blk_id[0] = (uint8_t)(dblk >> 16);
+		g_disk_io.hdd.blk_count = num;
+		bios_do_disk_io();
 
-	g_disk_io.status = 0xffff;
-	g_disk_io.errorDetail = 0;
-	g_disk_io.addr = (uint32_t)(boot_data_addr + buf); // FIXME
-	g_disk_io.hdd.blk_id[2] = (uint8_t)dblk;
-	g_disk_io.hdd.blk_id[1] = (uint8_t)(dblk >> 8);
-	g_disk_io.hdd.blk_id[0] = (uint8_t)(dblk >> 16);
-	g_disk_io.hdd.blk_count = num;
-	bios_do_disk_io();
+		if (g_disk_io.status) {
+				printf("\n\033[31mRead err: drv:%x, cmd:%x, addr:%x, id:%x, blk_id:%x, blk_cnt:%x, status:%x, response:%x\033[0m\n",
+					   (int)g_disk_io.drive,
+					   (int)g_disk_io.command,
+					   (int)g_disk_io.addr,
+					   (int)g_disk_io.hdd.id[0]<<8 |(int)g_disk_io.hdd.id[1],
+					   (int)g_disk_io.hdd.blk_id[0] << 16 | (int)g_disk_io.hdd.blk_id[1] << 8 | (int)g_disk_io.hdd.blk_id[2],
+					   (int)g_disk_io.hdd.blk_count,
+					   (int)g_disk_io.status,
+					   (int)g_disk_io.errorDetail);
+		}
 
-	if (g_disk_io.status) {
-		printf("\n\033[31mRead err: drv:%x, cmd:%x, addr:%x, id:%x, blk_id:%x, blk_cnt:%x, status:%x, error:%x\033[0m\n",
-						(int)g_disk_io.drive,
-						(int)g_disk_io.command,
-						(int)g_disk_io.addr,
-						(int)g_disk_io.hdd.id[0]<<8 |(int)g_disk_io.hdd.id[1],
-						(int)g_disk_io.hdd.blk_id[0] << 16 | (int)g_disk_io.hdd.blk_id[1] << 8 | (int)g_disk_io.hdd.blk_id[2],
-						(int)g_disk_io.hdd.blk_count,
-						(int)g_disk_io.status,
-						(int)g_disk_io.errorDetail);
-	}
-
-	return g_disk_io.status == 0 ? num : -1;
+		return g_disk_io.status == 0 ? num : -1;
 }
 
 /*
@@ -131,58 +132,130 @@ readsects(daddr_t dblk, int num, char *buf, int cold)
 #ifdef BOOTXX
 #define cold 1		/* collapse out references to diskbufp */
 #endif
-	while (num) {
-		int nsec;
+		while (num) {
+				int nsec;
 
-		/* check for usable data in read-ahead buffer */
-		if (cold || diskbuf_user != &ra_dev
-		    || dblk < ra_first || dblk >= ra_end) {
+				/* check for usable data in read-ahead buffer */
+				if (cold || diskbuf_user != &ra_dev
+					|| dblk < ra_first || dblk >= ra_end) {
 
-			/* no, read from disk */
-			char *trbuf;
-			int maxsecs;
-			int retries = BIOSDISK_RETRIES;
+						/* no, read from disk */
+						char *trbuf;
+						int maxsecs;
+						int retries = BIOSDISK_RETRIES;
 
-			if (cold) {
-				/* transfer directly to buffer */
-				trbuf = buf;
-				maxsecs = num;
-			} else {
-				/* fill read-ahead buffer */
-				trbuf = alloc_diskbuf(0); /* no data yet */
-				maxsecs = DISKBUFSIZE / 512;
-			}
+						if (cold) {
+								/* transfer directly to buffer */
+								trbuf = buf;
+								maxsecs = num;
+						} else {
+								/* fill read-ahead buffer */
+								trbuf = alloc_diskbuf(0); /* no data yet */
+								maxsecs = DISKBUFSIZE / 512;
+						}
 
-			while ((nsec = do_read(dblk, maxsecs, trbuf)) < 0) {
+						while ((nsec = do_read(dblk, maxsecs, trbuf)) < 0) {
 #ifdef DISK_DEBUG
-				if (!cold)
-					printf("read error dblk %"PRId64"-%"PRId64"\n",
-					    dblk, (dblk + maxsecs - 1));
+								if (!cold)
+										printf("read error dblk %"PRId64"-%"PRId64"\n",
+											   dblk, (dblk + maxsecs - 1));
 #endif
-				if (--retries >= 0)
-					continue;
-				return -1;	/* XXX cannot output here if
-						 * (cold) */
-			}
-			if (!cold) {
-				ra_first = dblk;
-				ra_end = dblk + nsec;
-				diskbuf_user = &ra_dev;
-			}
-		} else		/* can take blocks from end of read-ahead
-				 * buffer */
-			nsec = ra_end - dblk;
+								if (--retries >= 0)
+										continue;
+								return -1;	/* XXX cannot output here if
+											* (cold) */
+						}
+						if (!cold) {
+								ra_first = dblk;
+								ra_end = dblk + nsec;
+								diskbuf_user = &ra_dev;
+						}
+				} else		/* can take blocks from end of read-ahead
+						* buffer */
+						nsec = ra_end - dblk;
 
-		if (!cold) {
-			/* copy data from read-ahead to user buffer */
-			if (nsec > num)
-				nsec = num;
-			memcpy(buf, diskbufp + (dblk - ra_first) * 512, nsec * 512);
+				if (!cold) {
+						/* copy data from read-ahead to user buffer */
+						if (nsec > num)
+								nsec = num;
+						memcpy(buf, diskbufp + (dblk - ra_first) * 512, nsec * 512);
+				}
+				buf += nsec * 512;
+				num -= nsec;
+				dblk += nsec;
 		}
-		buf += nsec * 512;
-		num -= nsec;
-		dblk += nsec;
-	}
 
-	return 0;
+		return 0;
+}
+
+int uploadDLCode(uint16_t drive, const uint8_t *buff, uint16_t sz, uint32_t addr)
+{
+		memset(&g_disk_io, 0, sizeof(struct DiskIoDMA));
+		g_disk_io.drive = drive;
+		g_disk_io.command = Command_WriteTo186;
+		g_disk_io.addr = (uint32_t) (boot_data_addr + buff);
+		*(uint16_t*)&g_disk_io.hdd.id[0] = sz;
+		*(uint32_t*)&g_disk_io.hdd.blk_id[0] = addr;
+		bios_do_disk_io();
+
+		if (g_disk_io.status) {
+				printf("\n\033[31mupload err: drv:%x, cmd:%x, addr:%x, 186_addr:%x, sz:%x, status:%x, error:%x\033[0m\n",
+					   (int)g_disk_io.drive,
+					   (int)g_disk_io.command,
+					   (int)g_disk_io.addr,
+					   (int)*(uint32_t*)&g_disk_io.hdd.blk_id[0],
+					   (int)*(uint16_t*)&g_disk_io.hdd.id[0],
+					   (int)g_disk_io.status,
+					   (int)g_disk_io.errorDetail);
+		}
+
+		return g_disk_io.status == 0 ? sz : -1;
+}
+
+int
+execDLCode(uint16_t drive, uint32_t addr)
+{
+		printf("Exec code drive: %x == 0x0d, @0%x == F680\n", (int)drive, addr);
+		memset(&g_disk_io, 0, sizeof(struct DiskIoDMA));
+		g_disk_io.drive = drive;
+		g_disk_io.command = Command_WriteSCSI;
+		g_disk_io.addr = addr;
+
+		bios_do_disk_io();
+
+		if (g_disk_io.status) {
+				printf("\n\033[31mexec err: drv:%x, cmd:%x, addr:%x, status:%x, error:%x\033[0m\n",
+					   (int)g_disk_io.drive,
+					   (int)g_disk_io.command,
+					   (int)g_disk_io.addr,
+					   (int)g_disk_io.status,
+					   (int)g_disk_io.errorDetail);
+		}
+
+		return g_disk_io.status == 0 ? 0 : -1;
+}
+
+int checkBoard(uint16_t drive)
+{
+		memset(&g_disk_io, 0, sizeof(struct DiskIoDMA));
+		g_disk_io.drive = drive;
+		g_disk_io.command = Command_CheckBoard;
+
+		bios_do_disk_io();
+		if ((*(uint8_t*)(&g_disk_io.errorDetail) == 2) && (g_disk_io.hdd.id[1] == 0)) {
+				g_disk_io.hdd.id[1] = 1;
+				printf("\nNotice! CPU firmware v1.3, or above, required to support ACPA in slot #2.\n");
+		}
+		switch(g_disk_io.status) {
+		case Status_NoError:
+				return *(uint8_t*)(&g_disk_io.errorDetail);
+		case Status_DeviceError:
+		case Status_DeviceNotImplemented:
+		case Status_DeviceNotPresent:
+		case Status_CommandTimeOut:
+		case Status_CommandUnaccepted:
+				return 0xff;
+		default:
+				return 0;
+		}
 }

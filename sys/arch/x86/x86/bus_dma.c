@@ -85,7 +85,9 @@ __KERNEL_RCSID(0, "$NetBSD: bus_dma.c,v 1.89 2022/08/20 23:48:51 riastradh Exp $
  */
 
 #include "ioapic.h"
+#ifndef ALTOS
 #include "isa.h"
+#endif
 #include "opt_mpbios.h"
 
 #include <sys/param.h>

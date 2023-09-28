@@ -72,14 +72,7 @@
 
 #define	MAXIOMEM	0xffffffff
 
-/*
- * Maximum physical memory supported by the implementation.
- */
-#ifdef PAE
-#define MAXPHYSMEM	0x1000000000ULL /* 64GB */
-#else
 #define MAXPHYSMEM	0x100000000ULL	/* 4GB */
-#endif
 
 #if defined(_KERNEL_OPT)
 #include "opt_kernbase.h"

@@ -44,7 +44,7 @@ _C_LABEL(biostramp_image):
 	.globl	_C_LABEL(biostramp_image)
 
 8:
-#include "i386/bioscall/biostramp.inc"
+#include "altos/bioscall/biostramp.inc"
 9:
 
 	.globl	_C_LABEL(biostramp_image_size)

@@ -396,7 +396,7 @@ cpu_probe_cyrix_cmn(struct cpu_info *ci)
 	 * even be in here, it should be in there. XXX
 	 */
 	uint8_t c3;
-#ifndef XENPV
+#if !defined(XENPV) && !defined(ALTOS)
 	extern int clock_broken_latch;
 
 	switch (ci->ci_signature) {

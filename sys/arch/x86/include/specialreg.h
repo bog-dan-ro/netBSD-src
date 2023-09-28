@@ -70,7 +70,7 @@
 #define CR0_AM	0x00040000	/* Alignment Mask (set to enable AC flag) */
 #define CR0_NW	0x20000000	/* Not Write-through */
 #define CR0_CD	0x40000000	/* Cache Disable */
-#define CR0_PG	0x80000000	/* PaGing enable */
+#define CR0_PG	0x80000000	/* Paging enable */
 
 /*
  * Cyrix 486 DLC special registers, accessible as IO ports

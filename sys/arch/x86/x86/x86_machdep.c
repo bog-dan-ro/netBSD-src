@@ -105,12 +105,12 @@ static bool x86_user_ldt_enabled __read_mostly = false;
 #include <xen/hypervisor.h>
 #endif
 
-#ifndef XENPV
-void (*delay_func)(unsigned int) = i8254_delay;
-void (*x86_initclock_func)(void) = i8254_initclocks;
-#else /* XENPV */
+#if defined (XENPV)
 void (*delay_func)(unsigned int) = xen_delay;
 void (*x86_initclock_func)(void) = xen_initclocks;
+#else /* XENPV */
+void (*delay_func)(unsigned int) = i8254_delay;
+void (*x86_initclock_func)(void) = i8254_initclocks;
 #endif
 
 
@@ -906,7 +906,9 @@ void
 init_x86_clusters(void)
 {
 	struct btinfo_memmap *bim;
+#ifndef ALTOS
 	struct btinfo_efimemmap *biem;
+#endif
 
 	/*
 	 * Check to see if we have a memory map from the BIOS (passed to us by
@@ -920,10 +922,12 @@ init_x86_clusters(void)
 
 #ifdef i386
 	extern int biosmem_implicit;
+#ifndef ALTOS
 	biem = lookup_bootinfo(BTINFO_EFIMEMMAP);
 	if (biem != NULL)
 		bim = efi_get_e820memmap();
 	else
+#endif
 		bim = lookup_bootinfo(BTINFO_MEMMAP);
 	if ((biosmem_implicit || (biosbasemem == 0 && biosextmem == 0)) &&
 	    bim != NULL && bim->num > 0)
@@ -1473,7 +1477,7 @@ SYSCTL_SETUP(sysctl_machdep_setup, "sysctl machdep subtree setup")
 		       NULL, 0, &x86_user_ldt_enabled, 0,
 		       CTL_MACHDEP, CTL_CREATE, CTL_EOL);
 
-#ifndef XENPV
+#if !defined(XENPV) && !defined(ALTOS)
 	void sysctl_speculation_init(struct sysctllog **);
 	sysctl_speculation_init(clog);
 #endif

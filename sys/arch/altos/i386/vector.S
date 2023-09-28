@@ -67,27 +67,13 @@
 #include <machine/asm.h>
 __KERNEL_RCSID(0, "$NetBSD: vector.S,v 1.89 2022/09/07 00:40:18 knakahara Exp $");
 
-#include "opt_ddb.h"
 #include "opt_multiprocessor.h"
-#include "opt_xen.h"
-#include "opt_dtrace.h"
 
 #include <machine/i8259.h>
-#include <machine/i82093reg.h>
-#include <machine/i82489reg.h>
 #include <machine/frameasm.h>
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 #include <machine/trap.h>
-#ifdef XEN
-#include <xen/xen.h>
-#endif
-
-#include "ioapic.h"
-#include "lapic.h"
-#ifndef XENPV
-#include "hyperv.h"
-#endif
 
 #include "assym.h"
 
@@ -144,7 +130,6 @@ dtrace_invop_calltrap_addr:
 	.text
 #endif
 
-#ifndef XENPV
 #if NLAPIC > 0
 #ifdef MULTIPROCESSOR
 /*
@@ -321,43 +306,6 @@ IDTVEC(resume_lapic_ltimer)
 	INTRFASTEXIT
 IDTVEC_END(resume_lapic_ltimer)
 
-#if NHYPERV > 0
-	/*
-	 * Hyper-V event channel upcall interrupt handler.
-	 * Only used when the hypervisor supports direct vector callbacks.
-	 */
-IDTVEC(recurse_hyperv_hypercall)
-	INTR_RECURSE_HWFRAME
-	pushl	$0
-	pushl	$T_ASTFLT
-	INTRENTRY
-	jmp	1f
-IDTVEC_END(recurse_hyperv_hypercall)
-IDTVEC(intr_hyperv_hypercall)
-	pushl	$0
-	pushl	$T_ASTFLT
-	INTRENTRY
-	movzbl	CPUVAR(ILEVEL),%ebx
-	cmpl	$IPL_NET,%ebx
-	jae	2f
-	jmp	1f
-IDTVEC_END(intr_hyperv_hypercall)
-IDTVEC(resume_hyperv_hypercall)
-1:
-	pushl	%ebx
-	IDEPTH_INCR
-	movb	$IPL_NET,CPUVAR(ILEVEL)
-	sti
-	pushl	%esp
-	call	_C_LABEL(hyperv_hypercall_intr)
-	addl	$4,%esp
-	cli
-	jmp	_C_LABEL(Xdoreti)
-2:
-	btsl	$(LIR_HV - 32),CPUVAR(IPENDING)+4
-	INTRFASTEXIT
-IDTVEC_END(resume_hyperv_hypercall)
-#endif	/* NHYPERV > 0 */
 
 #endif /* NLAPIC > 0 */
 
@@ -658,124 +606,11 @@ LABEL(name ## _stubs)				; \
 	INTRSTUB_ENTRY(name ## 55)		; \
 END(name ## _stubs)
 
-#endif /* XENPV */
-
-#if defined(XEN)
-#define voidop(num)
-
-#define	XENINTRSTUB(name, sir, level, unmask) \
-IDTVEC(recurse_ ## name ## sir)						;\
-	INTR_RECURSE_HWFRAME						;\
-	subl	$4,%esp							;\
-	pushl	$T_ASTFLT		/* trap # for doing ASTs */	;\
-	INTRENTRY							;\
-IDTVEC(resume_ ## name ## sir)						\
-	movl	$IREENT_MAGIC,TF_ERR(%esp)				;\
-	pushl	%ebx							;\
-	movl	CPUVAR(ISOURCES) + (sir) * 4,%ebp			;\
-	movb	$level,CPUVAR(ILEVEL)					;\
-	IDEPTH_INCR /* leaves old %esp on stack	*/			;\
-	STI(%eax)							;\
-	movl	IS_HANDLERS(%ebp),%ebx					;\
-6:									\
-	cmpl	$0, IH_PENDING(%ebx)	/* is handler pending ? */	;\
-	je	7f			/* no */			;\
-	movl	$0, IH_PENDING(%ebx)					;\
-	pushl	IH_ARG(%ebx)						;\
-	call	*IH_FUN(%ebx)		/* call it */			;\
-	addl	$4,%esp			/* toss the arg */		;\
-7:									\
-	movl	IH_NEXT(%ebx),%ebx	/* next handler in chain */	;\
-	testl	%ebx,%ebx						;\
-	jnz	6b							;\
-									\
-	CLI(%eax)							;\
-	unmask(sir)			/* unmask it in hardware */	;\
-	jmp	_C_LABEL(Xdoreti)	/* lower spl and do ASTs */	;\
-
-/*
- * Just unmasking the event isn't enough, we also need to
- * reassert the event pending bit if needed. For now just call
- * the C function doing it, maybe rewrite in inline assembly ?
- */
-#define hypervisor_asm_unmask(sir)			\
-	pushl	$sir					;\
-	call	_C_LABEL(hypervisor_enable_sir)		;\
-	addl	$4,%esp
-
-XENINTRSTUB(xenev,SIR_XENIPL_VM,IPL_VM,hypervisor_asm_unmask)
-XENINTRSTUB(xenev,SIR_XENIPL_SCHED,IPL_SCHED,hypervisor_asm_unmask)
-XENINTRSTUB(xenev,SIR_XENIPL_HIGH,IPL_HIGH,hypervisor_asm_unmask)
-
-/* On Xen, the xenev_stubs are purely for spl entry, since there is no
- * vector based mechanism. We however provide the entrypoint to ensure
- * that native and Xen struct intrstub ; definitions are uniform.
- */
-panicmsg:	.ascii "vector Xen event entry path entered."
-LABEL(entry_xenev)
-	pushl $panicmsg
-	call  _C_LABEL(panic)
-END(entry_xenev)
-
-#define XENINTRSTUB_ENTRY(name, sir) \
-	.long entry_xenev , _C_LABEL(Xrecurse_ ## name ## sir); \
-	.long _C_LABEL(Xresume_ ## name ## sir);
-
-	.type	_C_LABEL(xenev_stubs), @object
-LABEL(xenev_stubs)
-	XENINTRSTUB_ENTRY(xenev, SIR_XENIPL_VM) ;
-	XENINTRSTUB_ENTRY(xenev, SIR_XENIPL_SCHED) ;
-	XENINTRSTUB_ENTRY(xenev, SIR_XENIPL_HIGH) ;
-END(xenev_stubs)
-
-#endif /* XEN */
 
 #include "i386_trap.S"
 
-#ifdef XEN
 
-ENTRY(hypervisor_callback)
-IDTVEC(hypervisor_pvhvm_callback)	
-	pushl	$0			/* dummy error code */
-	pushl	$T_ASTFLT
-	INTRENTRY
-	movzbl	CPUVAR(ILEVEL),%eax
-	pushl	%eax
-	IDEPTH_INCR
-	/* IDEPTH_INCR puts %esp on stack; we use it as argument to
-	 * do_hypervisor_callback. But don't restore the stack after,
-	 * Xdoreti needs it too.
-	 */
-	call	do_hypervisor_callback
-#ifndef XENPV
-	movzbl	_C_LABEL(xenhvm_use_percpu_callback),%eax
-	testl	%eax, %eax
-	jz	1f
-	movl	_C_LABEL(local_apic_va),%eax
-	movl	$0, LAPIC_EOI(%eax)
-1:
-#endif
-	jmp	_C_LABEL(Xdoreti)
-IDTVEC_END(hypervisor_pvhvm_callback)
-END(hypervisor_callback)
-
-#endif /* XEN */
-#ifdef XENPV	
-/*
- * Hypervisor uses this for application faults while it executes.
- */
-ENTRY(failsafe_callback)
-	pop	%ds
-	pop	%es
-	pop	%fs
-	pop	%gs
-	call	_C_LABEL(xen_failsafe_handler)
-	iret
-END(failsafe_callback)
-
-#else	/* XENPV */
-
-	.section .rodata
+        .section .rodata
 
 INTRSTUB_ARRAY_16(legacy)
 
@@ -786,5 +621,3 @@ INTRSTUB_ARRAY_56(ioapic_level)
 INTRSTUB_ARRAY_56(x2apic_edge)
 INTRSTUB_ARRAY_56(x2apic_level)
 #endif
-
-#endif /* XENPV */

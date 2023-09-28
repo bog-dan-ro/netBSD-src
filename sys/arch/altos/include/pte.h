@@ -87,13 +87,8 @@
  * here we define the data types for PDEs and PTEs
  */
 #include <sys/stdint.h>
-#ifdef PAE
-typedef uint64_t pd_entry_t;		/* PDE */
-typedef uint64_t pt_entry_t;		/* PTE */
-#else
 typedef uint32_t pd_entry_t;		/* PDE */
 typedef uint32_t pt_entry_t;		/* PTE */
-#endif
 
 #endif
 
@@ -106,35 +101,6 @@ typedef uint32_t pt_entry_t;		/* PTE */
  * XXXfvdl this one's not right.
  */
 #define VA_SIGN_POS(va)		((va) & ~VA_SIGN_MASK)
-
-#ifdef PAE
-#define L1_SHIFT	12
-#define L2_SHIFT	21
-#define L3_SHIFT	30
-#define NBPD_L1		(1ULL << L1_SHIFT) /* # bytes mapped by L1 ent (4K) */
-#define NBPD_L2		(1ULL << L2_SHIFT) /* # bytes mapped by L2 ent (2MB) */
-#define NBPD_L3		(1ULL << L3_SHIFT) /* # bytes mapped by L3 ent (1GB) */
-
-#define L3_MASK		0xc0000000
-#define L2_REALMASK	0x3fe00000
-#define L2_MASK		(L2_REALMASK | L3_MASK)
-#define L1_MASK		0x001ff000
-
-#define L3_FRAME	(L3_MASK)
-#define L2_FRAME	(L3_FRAME | L2_MASK)
-#define L1_FRAME	(L2_FRAME|L1_MASK)
-
-#define PTE_4KFRAME	0x000ffffffffff000ULL
-#define PTE_2MFRAME	0x000fffffffe00000ULL
-
-#define PTE_FRAME	PTE_4KFRAME
-#define PTE_LGFRAME	PTE_2MFRAME
-
-/* macros to get real L2 and L3 index, from our "extended" L2 index */
-#define l2tol3(idx)	((idx) >> (L3_SHIFT - L2_SHIFT))
-#define l2tol2(idx)	((idx) & (L2_REALMASK >>  L2_SHIFT))
-
-#else /* PAE */
 
 #define L1_SHIFT	12
 #define L2_SHIFT	22
@@ -153,7 +119,6 @@ typedef uint32_t pt_entry_t;		/* PTE */
 #define PTE_FRAME	PTE_4KFRAME
 #define PTE_LGFRAME	PTE_4MFRAME
 
-#endif /* PAE */
 
 /*
  * x86 PTE/PDE bits.
@@ -172,11 +137,7 @@ typedef uint32_t pt_entry_t;		/* PTE */
 #define PTE_AVL2	0x00000400	/* Ignored by Hardware */
 #define PTE_AVL3	0x00000800	/* Ignored by Hardware */
 #define PTE_LGPAT	0x00001000	/* PAT on Large Pages */
-#ifdef PAE
-#define PTE_NX	0x8000000000000000ULL	/* No Execute */
-#else
 #define PTE_NX		0		/* Dummy */
-#endif
 
 #define	_MACHINE_PTE_H_X86
 #include <x86/pte.h>

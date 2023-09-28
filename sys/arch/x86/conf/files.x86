@@ -84,18 +84,18 @@ file	arch/x86/x86/hyperv.c		hyperv needs-flag
 file	arch/x86/x86/apic.c		ioapic | lapic
 file	arch/x86/x86/bus_dma.c		machdep
 file	arch/x86/x86/bus_space.c	machdep
-file	arch/x86/x86/consinit.c		machdep & !xenpv
+file	arch/x86/x86/consinit.c		machdep & !xenpv & !altos
 file	arch/x86/x86/core_machdep.c	coredump
 file	arch/x86/x86/cpu_topology.c	machdep
 file	arch/x86/x86/db_memrw.c		ddb | kgdb
 file	arch/x86/x86/db_trace.c		ddb
-file	arch/x86/x86/efi_machdep.c	machdep
+file	arch/x86/x86/efi_machdep.c	machdep & !altos
 file	arch/x86/x86/errata.c		machdep
 file	arch/x86/x86/genfb_machdep.c	machdep
 file	arch/x86/x86/identcpu.c		machdep
 file	arch/x86/x86/identcpu_subr.c	machdep
-file	arch/x86/x86/i8259.c		machdep & (!xenpv | dom0ops)
-file	arch/x86/x86/intr.c		machdep & !xenpv
+file	arch/x86/x86/i8259.c		machdep & (!xenpv | dom0ops) & !altos
+file	arch/x86/x86/intr.c		machdep & !xenpv & !altos
 file	arch/x86/x86/x86_softintr.c	machdep
 file	arch/x86/x86/kgdb_machdep.c	kgdb
 file	arch/x86/x86/nmi.c		machdep
@@ -103,7 +103,7 @@ file	arch/x86/x86/idt.c		machdep
 file	arch/x86/x86/ipi.c		machdep & !xenpv
 file	arch/x86/x86/mtrr_i686.c	mtrr & !xenpv
 file 	arch/x86/x86/patch.c		machdep & !xenpv
-file	dev/smbios_platform.c		machdep
+file	dev/smbios_platform.c		machdep & !altos
 file 	arch/x86/x86/pmap.c		machdep
 file 	arch/x86/x86/x86_tlb.c		machdep
 file	arch/x86/x86/procfs_machdep.c	procfs
@@ -114,7 +114,7 @@ file	arch/x86/x86/tsc.c		machdep
 file	arch/x86/x86/vm_machdep.c	machdep
 file	arch/x86/x86/x86_autoconf.c	machdep & !xenpv
 file	arch/x86/x86/x86_userconf.c	userconf
-file	arch/x86/x86/x86_machdep.c	machdep
+file	arch/x86/x86/x86_machdep.c	machdep & !altos
 
 file 	uvm/pmap/pmap_pvt.c		machdep
 
@@ -146,7 +146,7 @@ file	arch/x86/acpi/acpi_machdep.c	acpi
 file	arch/x86/isa/isa_machdep.c	isa
 
 # PC clock
-file 	arch/x86/isa/clock.c	!xenpv
+file 	arch/x86/isa/clock.c	!xenpv & !altos
 file	arch/x86/isa/rtc.c  	isa
 
 # Stubs for x86 routines not included in the system

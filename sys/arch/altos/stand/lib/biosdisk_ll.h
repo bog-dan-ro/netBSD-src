@@ -43,3 +43,6 @@
 void bios_do_disk_io(void);
 
 int readsects(daddr_t, int, char *, int);
+int uploadDLCode(uint16_t drive, const uint8_t *buff, uint16_t sz, uint32_t addr);
+int execDLCode(uint16_t drive, uint32_t addr);
+int checkBoard(uint16_t drive);

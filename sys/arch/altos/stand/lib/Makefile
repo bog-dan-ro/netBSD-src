@@ -21,12 +21,11 @@ CPPFLAGS+= -DNO_MULTIBOOT2
 
 SRCS= pcio.c conio.S
 SRCS+= getsecs.c biosgetrtc.S biosreboot.S
-SRCS+= biosmem.S getextmemx.c biosmemx.S printmemlist.c
+SRCS+= printmemlist.c
 SRCS+= pread.c menuutils.c parseutils.c
 SRCS+= bootinfo.c bootinfo_memmap.c
 SRCS+= startprog.S
 SRCS+= biosgetsystime.c altosgetsystime.S cpufunc.S bootmenu.c
-#SRCS+= realprot.S message.S message32.S dump_eax.S pvcopy.S putstr.S putstr32.S
 SRCS+=  dump_eax.S pvcopy.S
 SRCS+= biosdisk.c biosdisk_ll.c
 CWARNFLAGS.gcc+=	${GCC_NO_ADDR_OF_PACKED_MEMBER}

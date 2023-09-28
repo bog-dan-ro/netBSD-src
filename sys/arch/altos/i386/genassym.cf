@@ -123,13 +123,6 @@ include <machine/i82093reg.h>
 include <machine/i82093var.h>
 endif
 
-if defined(_KERNEL) && defined(_KERNEL_OPT)
-include "isa.h"
-endif
-if NISA > 0
-include <machine/isa_machdep.h>
-endif
-
 include <sys/bus.h>
 
 define	PAGE_SIZE		PAGE_SIZE

@@ -2,9 +2,10 @@
 #
 # standard, required NetBSD/i386 'options'
 
-machine i386 x86
+machine altos x86
 include		"conf/std"	# MI standard options
 
+options 	ALTOS
 options 	CPU_IN_CKSUM
 options 	EXEC_AOUT	# exec a.out binaries
 options 	EXEC_ELF32	# exec ELF binaries
@@ -16,10 +17,9 @@ options 	EXEC_SCRIPT	# exec #! scripts
 #options 	MULTIPROCESSOR		# multiprocessor support
 #options 	MPBIOS			# configure CPUs and APICs using MPBIOS
 
-options 	CHILD_MAX=1024	# 160 is too few
-options 	OPEN_MAX=1024	# 128 is too few
+options 	CHILD_MAX=256	# 160 is too few
+options 	OPEN_MAX=256	# 128 is too few
 
 mainbus0 at root
 cpu* at mainbus?
 #ioapic* at mainbus?
-

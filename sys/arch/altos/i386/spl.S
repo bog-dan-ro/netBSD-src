@@ -67,7 +67,6 @@ ENTRY(splraise)
 	ret
 END(splraise)
 
-#ifndef XENPV
 /*
  * void spllower(int s);
  *
@@ -106,64 +105,6 @@ ENTRY(spllower)
 	jmp	_C_LABEL(Xspllower)
 	.align	32
 END(spllower)
-#else  /* XENPV */
-STRONG_ALIAS(spllower, cx8_spllower)
-#endif /* !XENPV */
-
-/*
- * void	cx8_spllower(int s);
- *
- * spllower() optimized for Pentium Pro and later, which have long pipelines
- * that will be stalled by pushf/cli/popf.  Must be the same size as
- * spllower(), ie 96 bytes.  Does not need to restore eflags/IE as is patched
- * in once autoconf is underway.
- *
- * For cmpxchg8b, edx/ecx are the high words and eax/ebx the low.
- *
- * edx : eax = old level + high 24 bit old ipending / low 32 bit old ipending
- * ecx : ebx = new level + high 24 bit old ipending / low 32 bit old ipending
- */
-ENTRY(cx8_spllower)
-	movl	4(%esp),%ecx
-	movzbl	CPUVAR(ILEVEL),%edx
-	cmpl	%edx,%ecx			/* new level is lower? */
-	jae	1f
-	pushl	%ebx
-	pushl	%esi
-	pushl	%edi
-	movl	%ecx,%esi
-	movl	%ecx,%edi
-	shll	$24,%edi
-0:
-	movl	CPUVAR(IPENDING),%eax
-	testl	%eax,CPUVAR(IUNMASK)(,%esi,8)	/* deferred interrupts? */
-	jnz	2f
-	movl	CPUVAR(IPENDING)+4,%edx
-	testl	%edx,CPUVAR(IUNMASK)+4(,%esi,8)
-	jnz	2f
-	movl	%eax,%ebx
-	movl	%edx,%ecx
-	andl	$0x00ffffff,%ecx
-	orl	%edi,%ecx
-	cmpxchg8b CPUVAR(ISTATE)		/* swap in new ilevel */
-	jnz	0b
-	popl	%edi
-	popl	%esi
-	popl	%ebx
-1:
-	ret
-2:
-	popl	%edi
-	popl	%esi
-	popl	%ebx
-
-	/* The reference must be absolute, hence the indirect jump. */
-	movl	$Xspllower,%eax
-	jmp	*%eax
-
-	.align	32, 0xCC
-LABEL(cx8_spllower_end)
-END(cx8_spllower)
 
 /*
  * void Xspllower(int s);

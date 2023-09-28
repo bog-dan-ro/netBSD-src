@@ -54,9 +54,7 @@ __KERNEL_RCSID(0, "$NetBSD: x86_autoconf.c,v 1.87 2022/03/19 13:51:35 hannken Ex
 #include <machine/bootinfo.h>
 #include <machine/pio.h>
 
-#ifdef XEN
 #include <xen/xen.h>
-#endif
 
 #include <dev/i2c/i2cvar.h>
 

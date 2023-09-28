@@ -50,7 +50,7 @@ ENTRY(pbzero)
 	mov	12(%esp),%edi
 	mov	16(%esp),%ecx
 
-	mov	$flatdataseg, %ax	/* selector with offset == 0 */
+	mov	flatdataseg, %ax	/* selector with offset == 0 */
 	mov	%ax, %es
 	xor	%eax,%eax
 
@@ -75,7 +75,7 @@ ENTRY(vpbcopy)
 	mov	20(%esp),%edi
 	mov	24(%esp),%ecx
 
-	mov	$flatdataseg, %ax	/* selector with offset == 0 */
+	mov	flatdataseg, %ax	/* selector with offset == 0 */
 	mov	%ax, %es
 	xor	%eax,%eax
 
@@ -101,7 +101,7 @@ ENTRY(pvbcopy)
 	mov	20(%esp),%edi
 	mov	24(%esp),%ecx
 
-	mov	$flatdataseg, %ax	/* selector with offset == 0 */
+	mov	flatdataseg, %ax	/* selector with offset == 0 */
 	mov	%ax, %ds
 	xor	%eax,%eax
 

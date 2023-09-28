@@ -122,7 +122,9 @@ __KERNEL_RCSID(0, "$NetBSD: cpu.c,v 1.206 2022/09/24 11:05:18 riastradh Exp $");
 
 #include <dev/ic/mc146818reg.h>
 #include <dev/ic/hpetvar.h>
+#ifndef ALTOS
 #include <i386/isa/nvram.h>
+#endif
 #include <dev/isa/isareg.h>
 
 #include "tsc.h"

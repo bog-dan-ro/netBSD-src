@@ -57,7 +57,7 @@ docommand(char *arg)
 		}
 	}
 
-	printf("unknown command\n");
+	printf("unknown command %s\n", arg);
 	command_help(NULL);
 }
 

@@ -26,7 +26,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef ALTOS
 #include "isa.h"
+#endif
 
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: smbios_platform.c,v 1.2 2022/11/25 22:17:20 mrg Exp $");

@@ -11,6 +11,8 @@ include "arch/altos/conf/std.altos"
 makeoptions	COPTS="-Os"
 makeoptions	USE_SSP="no"
 
+options 	NO_PREEMPTION
+
 maxusers	8		# estimated number of users
 
 # CPU-related options.
@@ -35,6 +37,8 @@ options 	INSECURE	# disable kernel security levels - X needs this
 
 options 	RTC_OFFSET=0	# hardware clock is this many mins. west of GMT
 #options 	NTP		# NTP phase/frequency locked loop
+
+# options 	MODULAR		# new style module(7) framework
 
 #options 	KTRACE		# system call tracing via ktrace(1)
 
@@ -182,7 +186,7 @@ options 	WSDISPLAY_COMPAT_RAWKBD		# can get raw scancodes
 # allocate a number of virtual screens at autoconfiguration time
 #options 	WSDISPLAY_DEFAULTSCREENS=4
 # use a large software cursor that doesn't blink
-options 	PCDISPLAY_SOFTCURSOR
+#options 	PCDISPLAY_SOFTCURSOR
 
 #
 # Device configuration
@@ -534,9 +538,9 @@ cinclude "arch/altos/conf/GENERIC.local"
 
 # disk/mass storage pseudo-devices
 #pseudo-device	ccd			# concatenated/striped disk devices
-pseudo-device	fss			# file system snapshot device
+#pseudo-device	fss			# file system snapshot device
 #pseudo-device	md			# memory disk device (ramdisk)
-pseudo-device	vnd			# disk-like interface to files
+#pseudo-device	vnd			# disk-like interface to files
 #options 	VND_COMPRESSION		# compressed vnd(4)
 
 # network pseudo-devices

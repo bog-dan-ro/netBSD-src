@@ -50,7 +50,7 @@
 #include "opt_wsdisplay_compat.h"
 #endif
 #if !defined(_KERNEL) && !defined(_STANDALONE)
-#include <stdbool.h>
+#include <sys/stdbool.h>
 #endif
 
 #include <machine/endian.h>

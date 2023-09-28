@@ -102,37 +102,15 @@ __KERNEL_RCSID(0, "$NetBSD: trap.c,v 1.308 2022/08/20 23:48:50 riastradh Exp $")
 #include <machine/db_machdep.h>
 #include <machine/pmap_private.h>
 
-#include "mca.h"
-#if NMCA > 0
-#include <machine/mca_machdep.h>
-#endif
-
 #include <x86/dbregs.h>
 #include <x86/nmi.h>
 
-#include "isa.h"
 
 #include <sys/kgdb.h>
-
-#ifdef KDTRACE_HOOKS
-#include <sys/dtrace_bsd.h>
-
-/*
- * This is a hook which is initialized by the dtrace module
- * to handle traps which might occur during DTrace probe
- * execution.
- */
-dtrace_trap_func_t	dtrace_trap_func = NULL;
-
-dtrace_doubletrap_func_t	dtrace_doubletrap_func = NULL;
-#endif
 
 void trap(struct trapframe *);
 void trap_tss(struct i386tss *, int, int);
 void trap_return_fault_return(struct trapframe *) __dead;
-#ifndef XENPV
-int ss_shadow(struct trapframe *tf);
-#endif
 
 const char * const trap_type[] = {
 	"privileged instruction fault",		/*  0 T_PRIVINFLT */
@@ -244,32 +222,6 @@ trap_print(const struct trapframe *frame, const lwp_t *l)
 	    l, l->l_proc->p_pid, l->l_lid, KSTACK_LOWEST_ADDR(l));
 }
 
-#ifndef XENPV
-int
-ss_shadow(struct trapframe *tf)
-{
-	struct gate_descriptor *gd;
-	struct cpu_info *ci;
-	struct idt_vec *iv;
-	idt_descriptor_t *idt;
-	uintptr_t eip, func;
-	size_t i;
-
-	eip = tf->tf_eip;
-	ci = curcpu();
-	iv = idt_vec_ref(&ci->ci_idtvec);
-	idt = iv->iv_idt;
-
-	for (i = 0; i < 256; i++) {
-		gd = &idt[i];
-		func = (gd->gd_hioffset << 16) | gd->gd_looffset;
-		if (eip == func)
-			return 1;
-	}
-
-	return 0;
-}
-#endif
 
 /*
  * trap(frame): exception, fault, and trap interface to BSD kernel.
@@ -317,26 +269,11 @@ trap(struct trapframe *frame)
 		LWP_CACHE_CREDS(l, p);
 	}
 
-#ifdef KDTRACE_HOOKS
-	/*
-	 * A trap can occur while DTrace executes a probe. Before
-	 * executing the probe, DTrace blocks re-scheduling and sets
-	 * a flag in its per-cpu flags to indicate that it doesn't
-	 * want to fault. On returning from the probe, the no-fault
-	 * flag is cleared and finally re-scheduling is enabled.
-	 *
-	 * If the DTrace kernel module has registered a trap handler,
-	 * call it and if it returns non-zero, assume that it has
-	 * handled the trap and modified the trap frame so that this
-	 * function can return normally.
-	 */
-	if ((type == T_PROTFLT || type == T_PAGEFLT) &&
-	    dtrace_trap_func != NULL) {
-		if ((*dtrace_trap_func)(frame, type)) {
-			return;
-		}
+	if (type >= 0xf0 && type <= 0xff) {
+	  trap_print(frame, l);
+	  // TODO handle Altos specific traps
+	  goto trapsignal;
 	}
-#endif
 
 	switch (type) {
 
@@ -670,17 +607,11 @@ faultcommon:
 				 * the copy functions, and so visible
 				 * to cpu_kpreempt_exit().
 				 */
-#ifndef XENPV
-				x86_disable_intr();
-#endif
 				l->l_nopreempt--;
 				if (l->l_nopreempt > 0 || !l->l_dopreempt ||
 				    pfail) {
 					return;
 				}
-#ifndef XENPV
-				x86_enable_intr();
-#endif
 				/*
 				 * If preemption fails for some reason,
 				 * don't retry it.  The conditions won't

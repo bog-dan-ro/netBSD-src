@@ -61,7 +61,4 @@ struct mdproc {
 					/* Syscall handling function */
 };
 
-/* md_flags */
-#define MDP_USEDMTRR	0x0002	/* has set volatile MTRRs */
-
 #endif /* _I386_PROC_H_ */

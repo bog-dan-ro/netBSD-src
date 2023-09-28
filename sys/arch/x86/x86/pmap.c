@@ -1366,7 +1366,7 @@ pmap_bootstrap(vaddr_t kva_start)
 #endif
 	ldt_paddr = pmap_bootstrap_palloc(1);
 
-#if !defined(__x86_64__)
+#if !defined(__x86_64__) && !defined(ALTOS)
 	/* pentium f00f bug stuff */
 	pentium_idt_vaddr = pmap_bootstrap_valloc(1);
 #endif

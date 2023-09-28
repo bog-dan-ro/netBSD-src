@@ -1,6 +1,34 @@
 /*	$NetBSD: i386_trap.S,v 1.23 2022/09/07 00:40:18 knakahara Exp $	*/
 
 /*
+ * Copyright 2024 (c) BogDan Vatra.
+ * All rights reserved.
+ *
+ * Written by BogDan Vatra for Altos Series 1k.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY BOGDAN VATRA. ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL BOGDAN VATRA
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
  * Copyright 2002 (c) Wasabi Systems, Inc.
  * All rights reserved.
  *
@@ -63,7 +91,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #if 0
 #include <machine/asm.h>
 __KERNEL_RCSID(0, "$NetBSD: i386_trap.S,v 1.23 2022/09/07 00:40:18 knakahara Exp $");
@@ -88,49 +115,8 @@ IDTVEC(trap00)
 	ZTRAP(T_DIVIDE)
 IDTVEC_END(trap00)
 
-/*
- * Handle the SS shadow, CVE-2018-8897.
- *
- * We scan the IDT to determine if we hit an entry point. If so, we leave
- * without restoring the segregs, because we could fault while doing that.
- */
 IDTVEC(trap01)
-#ifndef XENPV
-	pushl	$0
-	pushl	$T_TRCTRAP
-	INTRENTRY
-
-	testb	$SEL_UPL,TF_CS(%esp)
-	jnz	.Lnormal_dbentry
-
-	pushl	%esp
-	call	ss_shadow
-	addl	$4,%esp
-
-	cmpl	$1,%eax
-	jne	.Lnormal_dbentry
-
-	/* SS shadow, ignore the exception. */
-	xorl	%eax,%eax
-	movl	%eax,%dr6
-
-	/* INTRFASTEXIT, but without segregs. */
-	movl	TF_EDI(%esp),%edi
-	movl	TF_ESI(%esp),%esi
-	movl	TF_EBP(%esp),%ebp
-	movl	TF_EBX(%esp),%ebx
-	movl	TF_EDX(%esp),%edx
-	movl	TF_ECX(%esp),%ecx
-	movl	TF_EAX(%esp),%eax
-	addl	$(TF_PUSHSIZE+8),%esp
-	iret
-
-.Lnormal_dbentry:
-	STI(%eax)
-	jmp _C_LABEL(calltrap)
-#else
 	ZTRAP(T_TRCTRAP)
-#endif
 IDTVEC_END(trap01)
 
 /*
@@ -167,48 +153,9 @@ IDTVEC(trap05)
 	ZTRAP(T_BOUND)
 IDTVEC_END(trap05)
 
-/*
- * Privileged instruction fault.
- */
-#ifdef KDTRACE_HOOKS
-	SUPERALIGN_TEXT
-IDTVEC(trap06)
-	/* Check if there is no DTrace hook registered. */
-	cmpl	$0,%ss:dtrace_invop_jump_addr
-	je	norm_ill
-
-	/* Check if this is a user fault. */
-	/* XXX this was 0x0020 in FreeBSD */
-	cmpl	$GSEL(GCODE_SEL, SEL_KPL),4(%esp) /* Check code segment. */
-
-	/* If so, just handle it as a normal trap. */
-	jne	norm_ill
-
-	/*
-	 * This is a kernel instruction fault that might have been caused
-	 * by a DTrace provider.
-	 */
-
-	/*
-	 * Set our jump address for the jump back in the event that
-	 * the exception wasn't caused by DTrace at all.
-	 */
-	movl	$norm_ill,dtrace_invop_calltrap_addr
-
-	/* Jump to the code hooked in by DTrace. */
-	jmpl	*dtrace_invop_jump_addr
-
-	/*
-	 * Process the instruction fault in the normal way.
-	 */
-norm_ill:
-	ZTRAP(T_PRIVINFLT)
-IDTVEC_END(trap06)
-#else
 IDTVEC(trap06)
 	ZTRAP(T_PRIVINFLT)
 IDTVEC_END(trap06)
-#endif
 
 IDTVEC(trap07)
 	pushl	$0			/* dummy error code */
@@ -248,21 +195,7 @@ IDTVEC(trap0d)
 IDTVEC_END(trap0d)
 
 IDTVEC(trap0e)
-#ifndef XENPV
-	pushl	$T_PAGEFLT
-	INTRENTRY
-	STI(%eax)
-	testb	$PGEX_U,TF_ERR(%esp)
-	jnz	calltrap
-	movl	%cr2,%eax
-	subl	_C_LABEL(pentium_idt),%eax
-	cmpl	$(6*8),%eax
-	jne	calltrap
-	movb	$T_PRIVINFLT,TF_TRAPNO(%esp)
-	jmp	calltrap
-#else
-	TRAP(T_PAGEFLT)
-#endif
+        TRAP(T_PAGEFLT)
 IDTVEC_END(trap0e)
 
 IDTVEC(intrspurious)
@@ -310,15 +243,7 @@ IDTVEC(trap11)
 IDTVEC_END(trap11)
 
 IDTVEC(trap12)
-	ZTRAP(T_MCA)
-IDTVEC_END(trap12)
-
 IDTVEC(trap13)
-	pushl	$0			/* dummy error code */
-	pushl	$T_XMM
-	jmp	.Ldo_fputrap
-IDTVEC_END(trap13)
-
 IDTVEC(trap14)
 IDTVEC(trap15)
 IDTVEC(trap16)
@@ -331,7 +256,7 @@ IDTVEC(trap1c)
 IDTVEC(trap1d)
 IDTVEC(trap1e)
 IDTVEC(trap1f)
-	/* 20 - 31 reserved for future exp */
+        /* 18 - 31 reserved for future exp */
 	ZTRAP(T_RESERVED)
 IDTVEC_END(trap1f)
 IDTVEC_END(trap1e)
@@ -382,6 +307,70 @@ IDTVEC(tss_trap08)
 	iret
 	jmp	1b
 IDTVEC_END(tss_trap08)
+
+IDTVEC(trap0xf0)
+    ZTRAP(T_ALTOS + 0)
+IDTVEC_END(trap0xf0)
+
+IDTVEC(trap0xf1)
+    ZTRAP(T_ALTOS + 1)
+IDTVEC_END(trap0xf1)
+
+IDTVEC(trap0xf2)
+    ZTRAP(T_ALTOS + 2)
+IDTVEC_END(trap0xf2)
+
+IDTVEC(trap0xf3)
+    ZTRAP(T_ALTOS + 3)
+IDTVEC_END(trap0xf3)
+
+IDTVEC(trap0xf4)
+    ZTRAP(T_ALTOS + 4)
+IDTVEC_END(trap0xf4)
+
+IDTVEC(trap0xf5)
+    ZTRAP(T_ALTOS + 5)
+IDTVEC_END(trap0xf5)
+
+IDTVEC(trap0xf6)
+    ZTRAP(T_ALTOS + 6)
+IDTVEC_END(trap0xf6)
+
+IDTVEC(trap0xf7)
+    ZTRAP(T_ALTOS + 7)
+IDTVEC_END(trap0xf7)
+
+IDTVEC(trap0xf8)
+    ZTRAP(T_ALTOS + 8)
+IDTVEC_END(trap0xf8)
+
+IDTVEC(trap0xf9)
+    ZTRAP(T_ALTOS + 9)
+IDTVEC_END(trap0xf9)
+
+IDTVEC(trap0xfa)
+    ZTRAP(T_ALTOS + 10)
+IDTVEC_END(trap0xfa)
+
+IDTVEC(trap0xfb)
+    ZTRAP(T_ALTOS + 11)
+IDTVEC_END(trap0xfb)
+
+IDTVEC(trap0xfc)
+    ZTRAP(T_ALTOS + 12)
+IDTVEC_END(trap0xfc)
+
+IDTVEC(trap0xfd)
+    ZTRAP(T_ALTOS + 13)
+IDTVEC_END(trap0xfd)
+
+IDTVEC(trap0xfe)
+    ZTRAP(T_ALTOS + 14)
+IDTVEC_END(trap0xfe)
+
+IDTVEC(trap0xff)
+    ZTRAP(T_ALTOS + 15)
+IDTVEC_END(trap0xff)
 
 /*
  * trap() calls here when it detects a fault in INTRFASTEXIT (loading the

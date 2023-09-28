@@ -3,7 +3,7 @@
 CPPFLAGS=	${APMCPPFLAGS}
 KSRC=${.CURDIR}/../../..
 ARCHSRC=${.CURDIR}/../..
-I386=${KSRC}/arch/i386
+I386=${KSRC}/arch/altos
 X86=${KSRC}/arch/x86
 CPPFLAGS+=-I${ARCHSRC} -I${KSRC} -I${.CURDIR} -I${.OBJDIR} -D_MODULE -D_KERNEL
 

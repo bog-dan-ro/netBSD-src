@@ -36,7 +36,6 @@ void vpbcopy(const void *, void *, size_t);
 void pvbcopy(const void *, void *, size_t);
 void pbzero(void *, size_t);
 extern uint32_t boot_data_addr;
-extern uint32_t kernel_data_addr;
 
 ssize_t pread(int, void *, size_t);
 void startprog(physaddr_t, uint32_t, uint32_t *, physaddr_t);
@@ -45,15 +44,6 @@ void multiboot(physaddr_t, physaddr_t, physaddr_t, uint32_t);
 int exec_netbsd(const char *, physaddr_t, int, int, void (*)(void));
 
 void delay(int);
-int getbasemem(void);
-int getextmemx(void);
-int getextmem1(void);
-int biosvideomode(void);
-#ifdef CONSERVATIVE_MEMDETECT
-#define getextmem() getextmem1()
-#else
-#define getextmem() getextmemx()
-#endif
 void printmemlist(void);
 void reboot(void);
 void puts(const char *str);

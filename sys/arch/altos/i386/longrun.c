@@ -99,12 +99,12 @@ tmx86_init_longrun(void)
 		return;
 
 	/* create the sysctl machdep.tm_longrun_* nodes */
-        sysctl_createv(NULL, 0, NULL, &mnode, CTLFLAG_PERMANENT,
+	sysctl_createv(NULL, 0, NULL, &mnode, CTLFLAG_PERMANENT,
 		       CTLTYPE_NODE, "machdep", NULL,
 		       NULL, 0, NULL, 0,
 		       CTL_MACHDEP, CTL_EOL);
 
-        sysctl_createv(NULL, 0, NULL, NULL, CTLFLAG_READWRITE,
+	sysctl_createv(NULL, 0, NULL, NULL, CTLFLAG_READWRITE,
 		       CTLTYPE_INT, "tm_longrun_mode", NULL,
 		       sysctl_machdep_tm_longrun, 0, NULL, 0,
 		       CTL_MACHDEP, CPU_TMLR_MODE, CTL_EOL);

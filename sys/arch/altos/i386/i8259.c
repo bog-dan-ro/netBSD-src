@@ -102,7 +102,6 @@ static void i8259_setup(struct pic *, struct cpu_info *, int, int, int);
 static void i8259_reinit_irqs(void);
 
 unsigned i8259_imen;
-
 /*
  * Perhaps this should be made into a real device.
  */
@@ -126,15 +125,9 @@ struct pic i8259_pic = {
 void
 i8259_default_setup(void)
 {
-#if NMCA > 0
-	/* level-triggered interrupts on MCA PS/2s */
-	if (MCA_system)
-		/* reset; program device, level-triggered, four bytes */
-		outb(IO_ICU1 + PIC_ICW1, ICW1_SELECT | ICW1_LTIM | ICW1_IC4);
-	else
-#endif
-		/* reset; program device, four bytes */
-		outb(IO_ICU1 + PIC_ICW1, ICW1_SELECT | ICW1_IC4);
+#if 0
+	/* reset; program device, four bytes */
+	outb(IO_ICU1 + PIC_ICW1, ICW1_SELECT | ICW1_SNGL | ICW1_IC4);
 
 	/* starting at this vector index */
 	outb(IO_ICU1 + PIC_ICW2, ICU_OFFSET);
@@ -187,11 +180,13 @@ i8259_default_setup(void)
 	outb(IO_ICU2 + PIC_OCW3, OCW3_SELECT | OCW3_SSMM | OCW3_SMM);
 	/* Read IRR by default. */
 	outb(IO_ICU2 + PIC_OCW3, OCW3_SELECT | OCW3_RR);
+#endif
 }
 
 static void
 i8259_hwmask(struct pic *pic, int pin)
 {
+#if 0
 	unsigned port;
 	uint8_t byte;
 
@@ -207,11 +202,13 @@ i8259_hwmask(struct pic *pic, int pin)
 		byte = i8259_imen & 0xff;
 	}
 	outb(port, byte);
+#endif
 }
 
 static void
 i8259_hwunmask(struct pic *pic, int pin)
 {
+#if 0
 	unsigned port;
 	uint8_t byte;
 
@@ -229,11 +226,13 @@ i8259_hwunmask(struct pic *pic, int pin)
 	}
 	outb(port, byte);
 	x86_enable_intr();
+#endif
 }
 
 static void
 i8259_reinit_irqs(void)
 {
+#if 0
 	int irqs, irq;
 	struct cpu_info *ci = &cpu_info_primary;
 	const size_t array_count = __arraycount(ci->ci_isources);
@@ -250,6 +249,7 @@ i8259_reinit_irqs(void)
 
 	outb(IO_ICU1 + PIC_OCW1, i8259_imen);
 	outb(IO_ICU2 + PIC_OCW1, i8259_imen >> 8);
+#endif
 }
 
 static void
@@ -272,8 +272,10 @@ i8259_setmask(unsigned mask)
 {
 	unsigned old = i8259_imen;
 
+#if 0
 	i8259_imen = mask;
 	outb(IO_ICU1 + PIC_OCW1, i8259_imen);
 	outb(IO_ICU2 + PIC_OCW1, i8259_imen >> 8);
+#endif
 	return old;
 }

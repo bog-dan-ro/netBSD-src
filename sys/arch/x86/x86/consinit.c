@@ -30,8 +30,10 @@
 __KERNEL_RCSID(0, "$NetBSD: consinit.c,v 1.35.4.1 2023/03/30 11:45:34 martin Exp $");
 
 #include "opt_kgdb.h"
+#ifndef ALTOS
 #include "opt_puc.h"
 #include "opt_xen.h"
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -44,11 +46,13 @@ __KERNEL_RCSID(0, "$NetBSD: consinit.c,v 1.35.4.1 2023/03/30 11:45:34 martin Exp
 #include <dev/cons.h>
 
 #include "nullcons.h"
+#ifndef ALTOS
 #include "genfb.h"
 #include "vga.h"
 #include "ega.h"
 #include "pcdisplay.h"
 #include "com_puc.h"
+#endif
 #if (NVGA > 0) || (NEGA > 0) || (NPCDISPLAY > 0)
 #include <dev/ic/mc6845reg.h>
 #include <dev/ic/pcdisplayvar.h>
@@ -71,7 +75,9 @@ __KERNEL_RCSID(0, "$NetBSD: consinit.c,v 1.35.4.1 2023/03/30 11:45:34 martin Exp
 #include <dev/ic/pckbcvar.h>
 #include <dev/pckbport/pckbportvar.h>
 #endif
+#ifndef ALTOS
 #include "pckbd.h" /* for pckbc_machdep_cnattach */
+#endif
 
 #if (NGENFB > 0)
 #include <dev/wsfb/genfbvar.h>
@@ -87,12 +93,12 @@ __KERNEL_RCSID(0, "$NetBSD: consinit.c,v 1.35.4.1 2023/03/30 11:45:34 martin Exp
 #include <dev/pci/puccn.h>
 #endif
 
-#include "ukbd.h"
 #if (NUKBD > 0)
+#include "ukbd.h"
 #include <dev/usb/ukbdvar.h>
 #endif
 
-#ifndef XENPV
+#if !defined(XENPV) && !defined(ALTOS)
 #include "hvkbd.h"
 #if NHVKBD > 0
 #include <dev/hyperv/hvkbdvar.h>

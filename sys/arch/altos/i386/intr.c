@@ -233,8 +233,6 @@ static void intr_disestablish_xcall(void *, void *);
 
 static const char *legacy_intr_string(int, char *, size_t, struct pic *);
 
-static const char *xen_intr_string(int, char *, size_t, struct pic *);
-
 #if defined(INTRSTACKSIZE)
 static inline bool redzone_const_or_false(bool);
 static inline int redzone_const_or_zero(int);
@@ -328,11 +326,6 @@ intr_create_intrid(int legacy_irq, struct pic *pic, int pin, char *buf,
 	}
 #endif /* __HAVE_PCI_MSI_MSIX */
 #endif
-
-	if (pic->pic_type == PIC_XEN) {
-		ih = pin;	/* Port == pin */
-		return xen_intr_string(pin, buf, len, pic);
-	}
 
 	/*
 	 * If the device is pci, "legacy_irq" is always -1. Least 8 bit of "ih"
@@ -498,10 +491,7 @@ intr_allocate_slot_cpu(struct cpu_info *ci, struct pic *pic, int pin,
 
 		isp = chained;
 		KASSERT(isp != NULL);
-		if (pic->pic_type == PIC_MSI || pic->pic_type == PIC_MSIX)
-			via = "vec";
-		else
-			via = "pin";
+		via = "vec";
 		snprintf(isp->is_evname, sizeof (isp->is_evname),
 		    "%s %d", via, pin);
 		evcnt_attach_dynamic(&isp->is_evcnt, EVCNT_TYPE_INTR, NULL,
@@ -1259,18 +1249,6 @@ intr_disestablish(struct intrhand *ih)
 }
 
 static const char *
-xen_intr_string(int port, char *buf, size_t len, struct pic *pic)
-{
-	KASSERT(pic->pic_type == PIC_XEN);
-
-	KASSERT(port >= 0);
-
-	snprintf(buf, len, "%s chan %d", pic->pic_name, port);
-
-	return buf;
-}
-
-static const char *
 legacy_intr_string(int ih, char *buf, size_t len, struct pic *pic)
 {
 	int legacy_irq;
@@ -1638,9 +1616,6 @@ intr_redistribute(struct cpu_info *oci)
 	for (oslot = 0; oslot < MAX_INTR_SOURCES; oslot++) {
 		if ((isp = oci->ci_isources[oslot]) == NULL) {
 			continue;
-		}
-		if (isp->is_pic->pic_type == PIC_IOAPIC) {
-			break;
 		}
 	}
 	if (oslot == MAX_INTR_SOURCES) {
@@ -2276,9 +2251,9 @@ interrupt_distribute_handler(const char *intrid, const kcpuset_t *newset,
 	error = intr_distribute_locked(ih, newset, oldset);
 
  out:
-	mutex_exit(&cpu_lock);
-	mutex_exit(&intr_distribute_lock);
-	return error;
+        mutex_exit(&cpu_lock);
+        mutex_exit(&intr_distribute_lock);
+        return error;
 }
 
 /*

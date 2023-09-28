@@ -163,7 +163,7 @@ bios32_init(void)
 #endif
 
 	/* see if we have SMBIOS extensions */
-#ifndef XENPV
+#if !defined(XENPV) && !defined(ALTOS)
 	if (efi_probe()) {
 		p = efi_getcfgtbl(&EFI_UUID_SMBIOS3);
 		if (p != NULL && smbios3_check_header(p)) {

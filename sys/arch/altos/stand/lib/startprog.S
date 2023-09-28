@@ -67,7 +67,7 @@ ENTRY(startprog)
 	movl	%esp,%ebp
 
 	/* Prepare a new stack */
-	movl	$flatdataseg,%ebx
+	movl	flatdataseg,%ebx
 	movw	%bx,%es		/* for arg copy */
 	movl	20(%ebp),%eax	/* stack */
 	subl	$4,%eax
@@ -77,11 +77,11 @@ ENTRY(startprog)
 	movl	12(%ebp),%ecx	/* argc */
 	movl	%ecx,%eax
 	decl	%eax
-	shl	$2,%eax
+	shl		$2,%eax
 	addl	16(%ebp),%eax	/* ptr to last arg */
 	movl	%eax,%esi
 
-	std			/* backwards */
+    std				/* backwards */
 	rep
 	movsl			/* copy %ds:(%esi) -> %es:(%edi) */
 
@@ -94,15 +94,15 @@ ENTRY(startprog)
 	movl	%edi,%esp
 
 	/* Push on our entry address */
-	movl	$flatcodeseg,%ebx
+	movl	flatcodeseg,%ebx
 	pushl	%ebx			/* code segment */
 	pushl	%ecx			/* phyaddr */
 
 	/* Convert over the other data segs */
-	movl	$flatdataseg,%ebx
+	movl	flatdataseg,%ebx
 	mov	%bx,%ds
 	mov	%bx,%es
 
 	/* Jump to phyaddr, with the new code segment */
 	lret
-
+END(startprog)

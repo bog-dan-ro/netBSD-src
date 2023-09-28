@@ -80,28 +80,16 @@
 
 #ifndef _I386_SEGMENTS_H_
 #define _I386_SEGMENTS_H_
-#ifdef _KERNEL_OPT
-#include "opt_xen.h"
-#endif
 
 /*
  * Selectors
  */
 
 #define ISPL(s)		((s) & SEL_RPL)	/* what is the priority level of a selector */
-#ifndef XENPV
 #define SEL_KPL		0		/* kernel privilege level */
-#else
-#define SEL_XEN		0		/* Xen privilege level */
-#define SEL_KPL		1		/* kernel privilege level */
-#endif /* XENPV */
 #define SEL_UPL		3		/* user privilege level */
 #define SEL_RPL		3		/* requester's privilege level mask */
-#ifdef XENPV
-#define CHK_UPL		2		/* user privilege level mask */
-#else
 #define CHK_UPL		SEL_RPL
-#endif /* XENPV */
 #define ISLDT(s)	((s) & SEL_LDT)	/* is it local or global */
 #define SEL_LDT		4		/* local descriptor table */
 
@@ -191,11 +179,7 @@ struct region_descriptor {
 #endif
 
 #ifdef _KERNEL
-#ifdef XENPV
-typedef struct trap_info idt_descriptor_t;
-#else
 typedef struct gate_descriptor idt_descriptor_t; 
-#endif /* XENPV */
 extern union descriptor *gdtstore, *ldtstore;
 
 void setgate(struct gate_descriptor *, void *, int, int, int, int);
@@ -317,16 +301,16 @@ struct idt_vec* idt_vec_ref(struct idt_vec *);
 #define GUDATA_SEL	4	/* User data descriptor */
 #define GLDT_SEL	5	/* Default LDT descriptor */
 #define GCPU_SEL	6	/* per-CPU segment */
-#define GEXTBIOSDATA_SEL 8	/* magic to catch BIOS refs to EBDA */
-#define GAPM32CODE_SEL	9	/* 3 APM segments must be consecutive */
-#define GAPM16CODE_SEL	10	/* and in the specified order: code32 */
-#define GAPMDATA_SEL	11	/* code16 and then data per APM spec */
-#define GBIOSCODE_SEL	12
-#define GBIOSDATA_SEL	13
-#define GPNPBIOSCODE_SEL 14
-#define GPNPBIOSDATA_SEL 15
-#define GPNPBIOSSCRATCH_SEL 16
-#define GPNPBIOSTRAMP_SEL 17
+// #define GLIOBASE_SEL 8	/* Altos memory mapped I/O */
+// #define GTAG_RAM_SEL	9	/* Altos tag ram */
+// #define GSIOBASE_SEL	10	/* Altos system I/O space */
+// #define GAPMDATA_SEL	11	/* code16 and then data per APM spec */
+// #define GBIOSCODE_SEL	12
+// #define GBIOSDATA_SEL	13
+// #define GPNPBIOSCODE_SEL 14
+// #define GPNPBIOSDATA_SEL 15
+// #define GPNPBIOSSCRATCH_SEL 16
+// #define GPNPBIOSTRAMP_SEL 17
 #define GTRAPTSS_SEL	18
 #define GIPITSS_SEL	19
 #define GUCODEBIG_SEL	20	/* User code with executable stack */

@@ -32,18 +32,6 @@
 #include <machine/asm.h>
 #include <sys/bootblock.h>
 
-/*
- * Code linked to 0x1000:0 and (usually) read from /boot by bootxx code
- *
- * On entry:
- * 	%dl			BIOS drive number
- *	%ecx:%ebx		Sector number of NetBSD partition
- *	%ds:%si			Boot parameter block (patched by installboot)
- *	%cs			0x1000
- *	%ds, %es, %ss		All zero
- *	%sp			near 0xfffc
- */
-
 	.text
 ENTRY(boot_start)
 	cld
@@ -55,7 +43,6 @@ ENTRY(boot_magic)
 #include <boot_params.S>
 .balign	4
 
-#define PHY_ADDR 0x300000
 boot_start_1:
 	// test the shit
 	movl %cs, %eax
@@ -68,10 +55,39 @@ boot_start_1:
 	mov %ax, %ds
 	mov %ax, %es
 
-	// init bootloader segment
 	movl $8, %ecx
 	movl %ecx, %fs
 
+	// init kernel segments
+	// setup data (SS, DS, ES, FS, GS) selector
+	movl $0x190, %ecx
+	movl $0, %eax
+	movw %ax, %fs:0x2(%ecx)
+	shrl $0x10, %eax
+	movb %al, %fs:0x4(%ecx)
+	movb %ah, %fs:0x7(%ecx)
+	movl $0xfffff, %eax
+	movw %ax, %fs:(%ecx)
+	shrl $0x10, %eax
+	orb $0xc0, %al
+	movb %al, %fs:0x6(%ecx)
+	movb $0x92, %fs:0x5(%ecx)
+
+	// setup CS selector
+	movl $0x198, %ecx
+	movl $0, %eax
+	movw %ax, %fs:0x2(%ecx)
+	shrl $0x10, %eax
+	movb %al, %fs:0x4(%ecx)
+	movb %ah, %fs:0x7(%ecx)
+	movl $0xfffff, %eax // the kernel shall have less than 2MB
+	movw %ax, %fs:(%ecx)
+	shrl $0x10, %eax
+	orb $0xc0, %al
+	movb %al, %fs:0x6(%ecx)
+	movb $0x9a, %fs:0x5(%ecx)
+
+	// init bootloader segment
 	// setup data (SS, DS, ES, FS, GS) selector
 	movl $0x160, %ecx
 	movl $PHY_ADDR, %eax
@@ -79,7 +95,7 @@ boot_start_1:
 	shrl $0x10, %eax
 	movb %al, %fs:0x4(%ecx)
 	movb %ah, %fs:0x7(%ecx)
-	movl $MEMSIZE-1, %eax
+	movl $0xfffff, %eax
 	movw %ax, %fs:(%ecx)
 	shrl $0x10, %eax
 	orb $0x40, %al
@@ -100,14 +116,14 @@ boot_start_1:
 	movb %al, %fs:0x6(%ecx)
 	movb $0x9a, %fs:0x5(%ecx)
 
-	movl $0x1000, %ecx
 	movw %cs, %ax
 	subl $8, %eax
 	movw %ax, %ds
 
 	// get current disk
+	movl $0x1000, %ecx
 	movb $0x0d, %bl
-	int	$0x28
+	int  $0x28
 	xor %ah, %ah
 	cmp $2, %ax
 	jne not_hdd // TODO Handle Floppy & Tape boot ?
@@ -126,13 +142,13 @@ boot_start_1:
 	div %ecx
 	inc %eax
 	mov %eax, %ecx
-read_more:
+1:
 	call bios_do_disk_io
 	cmpw $0x0000, STATUS
 	jne read_error
 	addl $0x1000, ADDR
 	addb $0x08, BLK_ADDR_BIG_ENDIAN + 2
-	loop read_more
+	loop 1b
 
 	ljmp $0x168, $0
 
@@ -143,7 +159,7 @@ boot_start_2:
 	mov %ax, %es
 	mov %ax, %gs
 	mov %ax, %fs
-	mov $MEMSIZE, %esp
+	movl $(0xff000-PHY_ADDR), %esp
 	pushl $greetings_msg
 	call puts
 	addl $4, %esp
@@ -159,6 +175,22 @@ boot_start_2:
 
 	call	_C_LABEL(boot2)		/* C bootstrap code */
 	jmp	_rtt
+
+ENTRY(getcr0)
+        movl	%cr0,%eax
+        ret
+
+ENTRY(andcr0)
+        movl	%cr0,%eax
+        andl	4(%esp),%eax
+        movl	%eax,%cr0
+        ret
+
+ENTRY(orcr0)
+        movl	%cr0,%eax
+        orl	4(%esp),%eax
+        movl	%eax,%cr0
+        ret
 
 // c: void puts(const char *str)
 ENTRY(puts)
@@ -189,9 +221,6 @@ _rtt:
 ENTRY(boot_data_addr)
 	.long	PHY_ADDR
 
-ENTRY(kernel_data_addr)
-	.long	0x00000000
-
 not_hdd:
 	pushl $not_hdd_msg
 	call puts
@@ -215,44 +244,7 @@ error_msg:
 
 	.text
 	.align  16
-gdt:
-	.word	0, 0
-	.byte	0, 0x00, 0x00, 0
-
-	/* kernel code segment */
-	.globl flatcodeseg
-flatcodeseg = . - gdt
-	.word	0xffff, 0
-	.byte	0, 0x9f, 0xcf, 0
-
-	/* kernel data segment */
-	.globl flatdataseg
-flatdataseg = . - gdt
-	.word	0xffff, 0
-	.byte	0, 0x93, 0xcf, 0
-
-	/* boot code segment, base will be patched */
-bootcodeseg = . - gdt
-	.word	0xffff, 0
-	.byte	0, 0x9e, 0x4f, 0
-
-	/* boot data segment, base will be patched */
-bootdataseg = . - gdt
-	.word	0xffff, 0
-	.byte	0, 0x92, 0xcf, 0
-
-	/* 16 bit real mode, base will be patched */
-bootrealseg = . - gdt
-	.word	0xffff, 0
-	.byte	0, 0x9e, 0x00, 0
-
-	/* limits (etc) for data segment in real mode */
-bootrealdata = . - gdt
-	.word	0xffff, 0
-	.byte	0, 0x92, 0x00, 0
-gdtlen = . - gdt
-
-	.align	16
-gdtarg:
-	.word	gdtlen-1		/* limit */
-	.long	0			/* physical addr, will be inserted */
+ENTRY(flatcodeseg)
+	.long	0x00000198
+ENTRY(flatdataseg)
+	.long	0x00000190

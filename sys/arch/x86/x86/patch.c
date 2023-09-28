@@ -132,7 +132,7 @@ static const struct x86_hotpatch_descriptor hp_cas_cx8_desc = {
 	.srcs = { &hp_cas_cx8_source }
 };
 __link_set_add_rodata(x86_hotpatch_descriptors, hp_cas_cx8_desc);
-
+#ifndef ALTOS
 /* SPLLOWER. */
 extern uint8_t cx8_spllower, cx8_spllower_end;
 static const struct x86_hotpatch_source hp_cx8_spllower_source = {
@@ -145,7 +145,7 @@ static const struct x86_hotpatch_descriptor hp_cx8_spllower_desc = {
 	.srcs = { &hp_cx8_spllower_source }
 };
 __link_set_add_rodata(x86_hotpatch_descriptors, hp_cx8_spllower_desc);
-
+#endif
 /* MUTEX_EXIT. */
 #ifndef LOCKDEBUG
 extern uint8_t i686_mutex_spin_exit, i686_mutex_spin_exit_end;

@@ -41,6 +41,7 @@ arch/altos/bioscall/bin2asm.sh
 arch/altos/bioscall/biostramp.S
 arch/altos/bioscall/biostramp.inc
 arch/altos/bioscall/genassym.cf
+arch/altos/conf/Makefile.altos
 arch/altos/conf/SERIES1k
 arch/altos/conf/files.altos
 arch/altos/conf/kern.ldscript
@@ -71,6 +72,8 @@ arch/altos/i386/genassym.cf
 arch/altos/i386/i386_mainbus.c
 arch/altos/i386/i386_trap.S
 arch/altos/i386/i386func.S
+arch/altos/i386/i8259.c
+arch/altos/i386/intr.c
 arch/altos/i386/kobj_machdep.c
 arch/altos/i386/linux_sigcode.S
 arch/altos/i386/linux_syscall.c
@@ -81,7 +84,6 @@ arch/altos/i386/machdep.c
 arch/altos/i386/machdep.c.orig
 arch/altos/i386/machdep.c.rej
 arch/altos/i386/mptramp.S
-arch/altos/i386/mtrr_k6.c
 arch/altos/i386/multiboot.c
 arch/altos/i386/process_machdep.c
 arch/altos/i386/rbus_machdep.c
@@ -90,6 +92,7 @@ arch/altos/i386/trap.c
 arch/altos/i386/vector.S
 arch/altos/i386/x86_autoconf.c
 arch/altos/include/acpi_machdep.h
+arch/altos/include/altosdma.h
 arch/altos/include/ansi.h
 arch/altos/include/aout_machdep.h
 arch/altos/include/apicvar.h
@@ -115,6 +118,7 @@ arch/altos/include/cputypes.h
 arch/altos/include/cpuvar.h
 arch/altos/include/db_machdep.h
 arch/altos/include/disklabel.h
+arch/altos/include/dp8571.h
 arch/altos/include/efi.h
 arch/altos/include/eisa_machdep.h
 arch/altos/include/elf_machdep.h
@@ -132,6 +136,7 @@ arch/altos/include/i82489var.h
 arch/altos/include/i8259.h
 arch/altos/include/ieee.h
 arch/altos/include/ieeefp.h
+arch/altos/include/immu.h
 arch/altos/include/int_const.h
 arch/altos/include/int_fmtio.h
 arch/altos/include/int_limits.h
