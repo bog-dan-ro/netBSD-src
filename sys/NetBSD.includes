@@ -1,0 +1,4 @@
+.
+arch/altos/include
+arch/x86/include
+arch/altos/compile/SERIES1k
