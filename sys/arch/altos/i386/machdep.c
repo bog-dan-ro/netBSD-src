@@ -1345,7 +1345,9 @@ init386(paddr_t first_avail)
 	 * Page 4:	Temporary page table for 0MB-4MB
 	 * Page 5:	Temporary page directory
 	 */
-	lowmem_rsvd = 6 * PAGE_SIZE;
+
+	// On Altos we don't have any reserved memory
+	lowmem_rsvd = 0;
 
 #if NISA > 0 || NPCI > 0
 	x86_bus_space_init();
@@ -1353,6 +1355,7 @@ init386(paddr_t first_avail)
 
 	consinit();	/* XXX SHOULD NOT BE DONE HERE */
 
+	printf("Hello there");
 	/*
 	 * Initialize RNG to get entropy ASAP either from CPU
 	 * RDRAND/RDSEED or from seed on disk.  Must happen after

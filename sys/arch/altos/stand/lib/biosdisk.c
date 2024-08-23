@@ -1422,7 +1422,7 @@ biosdisk_open_name(struct open_file *f, const char *name)
 	if (bi_wedge.matchblk == -1) {
 		if (readsects(offset, 1, d->buf, 1)) {
 #ifdef DISK_DEBUG
-       			printf("Error reading sector at %"PRId64"\n", offset);
+				printf("Error reading sector at %"PRId64"\n", offset);
 #endif
 			error =  EIO;
 			goto out;

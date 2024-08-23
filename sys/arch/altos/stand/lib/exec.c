@@ -386,11 +386,6 @@ struct dlcode_header
 		uint16_t id_last; // 2 or 0x800
 };
 
-struct boot_info {
-		uint8_t what[8];
-		uint16_t version[8];
-};
-
 #define BOOT_NARGS	4
 
 static uint32_t swapCS_IP(uint32_t addr)
@@ -612,8 +607,8 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 		u_long entry;
 		int error;
 
-		struct boot_info boot_info;
-		memset(&boot_info, 0, sizeof(struct boot_info));
+		struct btinfo_altos_devs btinfo_altos_devs;
+		memset(&btinfo_altos_devs, 0, sizeof(struct btinfo_altos_devs));
 
 		printf("exec: file=%s loadaddr=0x%lx\n", file ? file : "NULL",
 			   loadaddr);
@@ -685,9 +680,9 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 				goto out;
 		}
 		loaded[0] = TRUE;
-		boot_info.what[0] = 4;
-		boot_info.version[0] = ((uint16_t)g_disk_io.response[1] << 8 | g_disk_io.response[2]);
-		printf("Ioc version %x \n", (int)boot_info.version[0]);
+		btinfo_altos_devs.what[0] = 4;
+		btinfo_altos_devs.version[0] = ((uint16_t)g_disk_io.response[1] << 8 | g_disk_io.response[2]);
+		printf("Ioc version %x \n", (int)btinfo_altos_devs.version[0]);
 
 		int print_status = 0;
 		for (int i = 1; i < 3; ++i) {
@@ -697,22 +692,22 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 				printf("g_disk_io.hdd.id[1] == %d\n", (int)g_disk_io.hdd.id[1]);
 				if (ver == 1) {
 						board_type = "mdc";
-						if (boot_info.what[g_disk_io.hdd.id[1]] == 0)
-								boot_info.what[g_disk_io.hdd.id[1]] = 4; /* IS_MDROP */
+						if (btinfo_altos_devs.what[g_disk_io.hdd.id[1]] == 0)
+								btinfo_altos_devs.what[g_disk_io.hdd.id[1]] = 4; /* IS_MDROP */
 				} else if (ver == 2) {
 						board_type = "acpa";
-						boot_info.what[g_disk_io.hdd.id[1]] = 6; /* IS_ACPA */
+						btinfo_altos_devs.what[g_disk_io.hdd.id[1]] = 6; /* IS_ACPA */
 				} else {
 						continue;
 				}
-				boot_info.version[g_disk_io.hdd.id[1]] = ((uint16_t)g_disk_io.response[1] << 8 | g_disk_io.response[2]);
+				btinfo_altos_devs.version[g_disk_io.hdd.id[1]] = ((uint16_t)g_disk_io.response[1] << 8 | g_disk_io.response[2]);
 				if (!print_status) {
 						printf("Downloading comm board code...");
 						++print_status;
 				}
 				enum DLCODE_RESULT res = do_dlcode(i + 0xd, board_type, &execPtr[i]);
 				if (res != DLC_OK) {
-						boot_info.what[i] = 0;
+						btinfo_altos_devs.what[i] = 0;
 						continue;
 				}
 				loaded[i] = TRUE;
@@ -724,7 +719,7 @@ exec_netbsd(const char *file, physaddr_t loadaddr, int boothowto, int floppy,
 						// execDLCode(0x0c + i, execPtr[i - 1]);
 				}
 		}
-		BI_ADD(&boot_info, BTINFO_EFIMEMMAP, sizeof(struct boot_info));
+		BI_ADD(&btinfo_altos_devs, BTINFO_ALTOS_DEVS, sizeof(struct btinfo_altos_devs));
 		startprog(entry, BOOT_NARGS, boot_argv, STACK_PTR);
 		panic("exec returned");
 

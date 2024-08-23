@@ -102,6 +102,7 @@ static void i8259_setup(struct pic *, struct cpu_info *, int, int, int);
 static void i8259_reinit_irqs(void);
 
 unsigned i8259_imen;
+uint8_t maxmask = 0;
 /*
  * Perhaps this should be made into a real device.
  */

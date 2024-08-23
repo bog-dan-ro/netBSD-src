@@ -83,6 +83,8 @@ arch/altos/i386/longrun.c
 arch/altos/i386/machdep.c
 arch/altos/i386/machdep.c.orig
 arch/altos/i386/machdep.c.rej
+arch/altos/i386/mdc.c
+arch/altos/i386/mdcmem.c
 arch/altos/i386/mptramp.S
 arch/altos/i386/multiboot.c
 arch/altos/i386/process_machdep.c
@@ -124,6 +126,7 @@ arch/altos/include/eisa_machdep.h
 arch/altos/include/elf_machdep.h
 arch/altos/include/endian.h
 arch/altos/include/endian_machdep.h
+arch/altos/include/fd.h
 arch/altos/include/fenv.h
 arch/altos/include/float.h
 arch/altos/include/frame.h
@@ -155,6 +158,8 @@ arch/altos/include/mach_machdep.h
 arch/altos/include/math.h
 arch/altos/include/mca_machdep.h
 arch/altos/include/mcontext.h
+arch/altos/include/mdc.h
+arch/altos/include/mdcmem.h
 arch/altos/include/mpacpi.h
 arch/altos/include/mpbiosreg.h
 arch/altos/include/mpbiosvar.h
@@ -179,6 +184,7 @@ arch/altos/include/rbus_machdep.h
 arch/altos/include/reg.h
 arch/altos/include/return.h
 arch/altos/include/rwlock.h
+arch/altos/include/scsi.h
 arch/altos/include/segments.h
 arch/altos/include/setjmp.h
 arch/altos/include/signal.h

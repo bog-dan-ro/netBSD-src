@@ -40,6 +40,8 @@ file	arch/altos/i386/bios_funcs.S
 file	arch/altos/i386/i8259.c
 file	arch/altos/i386/intr.c
 file	arch/altos/i386/machdep.c
+file	arch/altos/i386/mdc.c
+file	arch/altos/i386/mdcmem.c
 file	arch/altos/i386/trap.c
 file 	arch/altos/i386/longrun.c
 

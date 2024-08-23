@@ -52,6 +52,7 @@ extern unsigned i8259_setmask(unsigned);
 extern void i8259_default_setup(void);
 extern void i8259_reinit(void);
 
+extern uint8_t maxmask;
 #endif /* !_LOCORE */
 
 /*
